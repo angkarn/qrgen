@@ -16,6 +16,21 @@ static FONT_DEFAULT: &'static [u8] = include_bytes!("NotoSansThai-Light.ttf");
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    #[clap(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Generate qrcode from content
+    Gen(GenArg),
+
+    /// Generate qrcode from a file of list content
+    From(FromArg),
+}
+
+#[derive(Parser, Debug)]
+struct CommonArg {
     /// Format output (console|png)
     #[clap(short, long, default_value = "console")]
     format: String,
@@ -47,9 +62,6 @@ struct Args {
     /// Positional of additional title (percentage), Empty this will center follow additional space
     #[clap(long = "tpxy", value_delimiter = ',')]
     title_pos_xy: Vec<usize>,
-
-    #[clap(subcommand)]
-    command: Command,
 }
 
 #[derive(Parser, Debug)]
@@ -76,6 +88,9 @@ struct FromArg {
     /// Index of column to set each file name
     #[clap(long = "icfn", default_value = "0")]
     index_column_filename: usize,
+
+    #[command(flatten)]
+    common_arg: CommonArg,
 }
 
 #[derive(Parser, Debug)]
@@ -87,18 +102,8 @@ struct GenArg {
     #[clap(short, long, default_value = "")]
     title: String,
 
-    /// File name
-    #[clap(short, long, default_value = "qrcode")]
-    filename: String,
-}
-
-#[derive(Subcommand, Debug)]
-enum Command {
-    /// Generate qrcode from content
-    Gen(GenArg),
-
-    /// Generate qrcode from a file of list content
-    From(FromArg),
+    #[command(flatten)]
+    common_arg: CommonArg,
 }
 
 fn main() {
@@ -107,39 +112,39 @@ fn main() {
     println!("{:?}", args);
 
     match &args.command {
-        Command::Gen(state) => handle_gen_command(&args, state),
-        Command::From(state) => handle_from_command(&args, state),
+        Command::Gen(state) => handle_gen_command(state),
+        Command::From(state) => handle_from_command(state),
     }
 }
 
-fn handle_gen_command(args_opt: &Args, gen_opt: &GenArg) {
-    match args_opt.format.as_str() {
+fn handle_gen_command(gen_opt: &GenArg) {
+    match gen_opt.common_arg.format.as_str() {
         "console" => generate_console(&gen_opt.content),
         "png" => {
-            let _ = create_dir_all(&args_opt.outdir.to_string())
+            let _ = create_dir_all(&gen_opt.common_arg.outdir.to_string())
                 .expect("Cannot create output directory!");
 
             generate_image(
                 gen_opt.content.clone(),
-                args_opt.size,
-                &format!("{}/{}.png", args_opt.outdir, "qr"),
+                gen_opt.common_arg.size,
+                &format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
                 if gen_opt.title != "" {
                     gen_opt.title.to_string()
                 } else {
                     "".to_owned()
                 },
-                &args_opt.add_side_space,
-                &args_opt.size_space,
-                &args_opt.title_pos_xy,
-                &args_opt.font_path,
-                args_opt.font_size,
+                &gen_opt.common_arg.add_side_space,
+                &gen_opt.common_arg.size_space,
+                &gen_opt.common_arg.title_pos_xy,
+                &gen_opt.common_arg.font_path,
+                gen_opt.common_arg.font_size,
             )
         }
         _ => {}
     }
 }
 
-fn handle_from_command(args_opt: &Args, from_opt: &FromArg) {
+fn handle_from_command(from_opt: &FromArg) {
     let list_content = process_file(
         &from_opt.path,
         &from_opt.template,
@@ -155,10 +160,10 @@ fn handle_from_command(args_opt: &Args, from_opt: &FromArg) {
 
     println!("\n\nGenerate Image...");
 
-    match args_opt.format.as_str() {
-        "console" => generate_list_console(list_content, &args_opt, from_opt),
+    match from_opt.common_arg.format.as_str() {
+        "console" => generate_list_console(list_content, from_opt),
 
-        "png" => generate_list_image(list_content, &args_opt, from_opt),
+        "png" => generate_list_image(list_content, from_opt),
         _ => {
             eprintln!("Can't found this format!")
         }
@@ -172,7 +177,7 @@ fn generate_console(content: &String) {
     println!();
 }
 
-fn generate_list_console(list_data: Vec<Vec<String>>, _: &Args, from_opt: &FromArg) {
+fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
     for row in list_data {
         let content = &row[from_opt.index_column_content];
         generate_console(content);
@@ -180,7 +185,7 @@ fn generate_list_console(list_data: Vec<Vec<String>>, _: &Args, from_opt: &FromA
     return;
 }
 
-fn generate_list_image(list_content: Vec<Vec<String>>, args_opt: &Args, from_opt: &FromArg) {
+fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
     // // Check config file name is duplicate of other
     // for content in list_content.iter() {
     //     let found_record = list_content.iter().find(|s| {
@@ -193,32 +198,31 @@ fn generate_list_image(list_content: Vec<Vec<String>>, args_opt: &Args, from_opt
     //     }
     // }
 
-    let _ = create_dir_all(args_opt.outdir.to_string()).expect("Cannot create output directory!");
+    let _ = create_dir_all(from_opt.common_arg.outdir.to_string())
+        .expect("Cannot create output directory!");
 
     for content in list_content.iter() {
         let path_output_file: String = format!(
             "{}/{}.png",
-            args_opt.outdir,
+            from_opt.common_arg.outdir,
             content[from_opt.index_column_filename].replace("/", "_")
         );
 
         generate_image(
             content[from_opt.index_column_content].to_string(),
-            args_opt.size,
+            from_opt.common_arg.size,
             &path_output_file,
             if from_opt.index_column_title.is_some() {
                 content[from_opt.index_column_title.unwrap()].to_string()
             } else {
                 "".to_owned()
             },
-            &args_opt.add_side_space,
-            &args_opt.size_space,
-            &args_opt.title_pos_xy,
-            &args_opt.font_path,
-            args_opt.font_size,
+            &from_opt.common_arg.add_side_space,
+            &from_opt.common_arg.size_space,
+            &from_opt.common_arg.title_pos_xy,
+            &from_opt.common_arg.font_path,
+            from_opt.common_arg.font_size,
         );
-
-        println!("created: {}", path_output_file);
     }
 }
 
@@ -345,6 +349,8 @@ fn generate_image(
     new_image
         .save(path_output_file)
         .expect("Error saving image");
+
+    println!("created: {}", path_output_file);
 }
 
 // Print the given qrcode object to the console
