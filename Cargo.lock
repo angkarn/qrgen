@@ -886,17 +886,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "qr-gen"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "clap",
- "csv",
- "imageproc",
- "qrcode-generator",
-]
-
-[[package]]
 name = "qrcode-generator"
 version = "4.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -912,6 +901,17 @@ name = "qrcodegen"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4339fc7a1021c9c1621d87f5e3505f2805c8c105420ba2f2a4df86814590c142"
+
+[[package]]
+name = "qrgen"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "clap",
+ "csv",
+ "imageproc",
+ "qrcode-generator",
+]
 
 [[package]]
 name = "quick-error"
