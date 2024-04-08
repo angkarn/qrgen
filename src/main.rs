@@ -51,7 +51,7 @@ struct CommonArg {
     #[clap(long = "ss", default_value = "15")]
     size_space: usize,
 
-    /// Path of font file (default use "IBMPlexSansThaiLooped-Light")
+    /// Path of font file
     #[clap(long = "fp")]
     font_path: Option<String>,
 
@@ -73,7 +73,7 @@ struct FromArg {
     #[clap(short, long = "icc", default_value = "0")]
     index_column_content: usize,
 
-    /// Index of column for additional title ("-1 is not show")
+    /// Index of column for additional title
     #[clap(long = "ict")]
     index_column_title: Option<usize>,
 
