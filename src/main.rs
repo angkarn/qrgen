@@ -8,7 +8,7 @@ use imageproc::{
     image,
 };
 use qrcode_generator::QrCodeEcc;
-use std::fs::{create_dir_all, read};
+use std::fs::{self, create_dir_all, read};
 
 static FONT_DEFAULT: &'static [u8] = include_bytes!("NotoSansThai-Light.ttf");
 
@@ -124,6 +124,8 @@ fn handle_gen_command(gen_opt: &GenArg) {
             let _ = create_dir_all(&gen_opt.common_arg.outdir.to_string())
                 .expect("Cannot create output directory!");
 
+            println!("\n\nGenerate Image...");
+
             generate_image(
                 gen_opt.content.clone(),
                 gen_opt.common_arg.size,
@@ -158,7 +160,7 @@ fn handle_from_command(from_opt: &FromArg) {
         list_content.get(0).expect("No data after process")
     );
 
-    println!("\n\nGenerate Image...");
+    println!("\n\nGenerate Images...");
 
     match from_opt.common_arg.format.as_str() {
         "console" => generate_list_console(list_content, from_opt),
@@ -202,11 +204,19 @@ fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
         .expect("Cannot create output directory!");
 
     for content in list_content.iter() {
-        let path_output_file: String = format!(
-            "{}/{}.png",
-            from_opt.common_arg.outdir,
-            content[from_opt.index_column_filename].replace("/", "_")
-        );
+        // Save the image with a unique filename
+        let filename = content[from_opt.index_column_filename].replace("/", "_");
+        let mut path_output_file: String =
+            format!("{}/{}.png", from_opt.common_arg.outdir, filename);
+
+        let mut counter = 0;
+        while fs::metadata(&path_output_file).is_ok() {
+            counter += 1;
+            path_output_file = format!(
+                "{}/{}_{}.png",
+                from_opt.common_arg.outdir, filename, counter
+            );
+        }
 
         generate_image(
             content[from_opt.index_column_content].to_string(),
