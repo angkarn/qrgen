@@ -25,7 +25,7 @@ enum Command {
     /// Generate qrcode from content
     Gen(GenArg),
 
-    /// Generate qrcode from a file of list content
+    /// Generate qrcode from a file of list content (csv format)
     From(FromArg),
 }
 
@@ -59,7 +59,7 @@ struct CommonArg {
     #[clap(long = "fs", default_value = "10")]
     font_size: usize,
 
-    /// Positional of additional title (percentage), Empty this will center follow additional space
+    /// Positional of additional title (percentage), Empty this will center of additional space
     #[clap(long = "tpxy", value_delimiter = ',')]
     title_pos_xy: Vec<usize>,
 }
@@ -99,8 +99,8 @@ struct GenArg {
     content: String,
 
     /// Put additional title on image
-    #[clap(short, long, default_value = "")]
-    title: String,
+    #[clap(short, long)]
+    title: Option<String>,
 
     #[command(flatten)]
     common_arg: CommonArg,
@@ -130,11 +130,7 @@ fn handle_gen_command(gen_opt: &GenArg) {
                 gen_opt.content.clone(),
                 gen_opt.common_arg.size,
                 &format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
-                if gen_opt.title != "" {
-                    gen_opt.title.to_string()
-                } else {
-                    "".to_owned()
-                },
+                &gen_opt.title,
                 &gen_opt.common_arg.add_side_space,
                 &gen_opt.common_arg.size_space,
                 &gen_opt.common_arg.title_pos_xy,
@@ -218,15 +214,16 @@ fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
             );
         }
 
+        let title = match from_opt.index_column_title {
+            Some(index) => Some(content.get(index).unwrap().to_string()),
+            None => None,
+        };
+
         generate_image(
             content[from_opt.index_column_content].to_string(),
             from_opt.common_arg.size,
             &path_output_file,
-            if from_opt.index_column_title.is_some() {
-                content[from_opt.index_column_title.unwrap()].to_string()
-            } else {
-                "".to_owned()
-            },
+            &title,
             &from_opt.common_arg.add_side_space,
             &from_opt.common_arg.size_space,
             &from_opt.common_arg.title_pos_xy,
@@ -240,7 +237,7 @@ fn generate_image(
     content: String,
     size: u32,
     path_output_file: &String,
-    title: String,
+    title: &Option<String>,
     add_side_space: &str,
     size_space: &usize,
     title_pos_xy: &[usize],
@@ -252,7 +249,7 @@ fn generate_image(
         .expect("Failed to generate QR code");
 
     // Define the additional space to be added on top
-    let additional_space = if !title.is_empty() {
+    let additional_space = if !title.is_none() {
         size * size_space.to_owned() as u32 / 100
     } else {
         0
@@ -283,7 +280,7 @@ fn generate_image(
     let new_image_width = new_image.width();
     let new_image_height = new_image.height();
 
-    if !title.is_empty() {
+    if !title.is_none() {
         // Get font data
         let font_data = if font_path.is_none() {
             Vec::<u8>::from(FONT_DEFAULT)
@@ -298,7 +295,7 @@ fn generate_image(
         let mut px_scale: PxScale;
 
         // Define the text to be drawn
-        let text = title.to_string();
+        let text = title.clone().unwrap().to_string();
 
         let mut _text_size: (u32, u32);
 
@@ -322,7 +319,7 @@ fn generate_image(
         if percent_font_size < font_size {
             println!(
                 "info: title ({}) was reduced font to {}%",
-                title, percent_font_size
+                text, percent_font_size
             )
         }
 
