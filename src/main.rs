@@ -109,7 +109,7 @@ struct GenArg {
 fn main() {
     let args = Args::parse();
 
-    println!("{:?}", args);
+    // println!("{:?}", args);
 
     match &args.command {
         Command::Gen(state) => handle_gen_command(state),
