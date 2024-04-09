@@ -8,7 +8,7 @@ Tools for generate qrcode image from command line.
 
 ## Download
 ```sh
-curl -LO https://github.com/angkarn/qrgen/releases/download/v0.1.0-dev/qrgen | chmod +x qrgen
+curl -LO https://github.com/angkarn/qrgen/releases/download/v0.1.0-dev/qrgen && chmod +x qrgen
 ```
 
 ## Uasge
