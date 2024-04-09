@@ -2,9 +2,9 @@
 Tools for generate qrcode image from command line.
 
 ## Features
-- Add additional space with custom title and set position on your qrcode image.
-- Generate multiple images from a csv format file. 
-- Customize template for replace any you data (eg. QR content, Title) from list file.
+- Add custom title and font qrcode image.
+- Generate multiple qr from a csv format file.
+- Template text for replace any you data (eg. QR content, Title) from list file.
 
 ## Uasge
 You can use help command to see this.
@@ -69,7 +69,11 @@ Options:
 ```
 
 ## Example
-
+```
+1,aaa
+2,bbb
+3,ccc
+```
 Generate one and print to console.
 ```
 qrgen gen "Hello World"
@@ -84,15 +88,30 @@ Generate from list file with set column index of content, filename.
 ```
 qrgen from example_data.csv -f=png --icc=1 --icfn=0
 ```
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0/3.jpg)
+```
+output/
+ 1.png
+ 2.png
+ 3.png
+```
 
 Custom set title and side of additional space. Will auto set title positon to center of additional space.
 ```
 qrgen from example_data.csv -f=png --icc=1 --icfn=0 --ict=1 --ass=top
 ```
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0%20--ict%3D1%20--ass%3Dtop/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0%20--ict%3D1%20--ass%3Dtop/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/b29a9bd879691c95664bb18cfbc991fa7e20b6bc/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--icfn%3D0%20--ict%3D1%20--ass%3Dtop/3.jpg)
 
-Custom template to replace some text on any data in file. This example will custom column index 0,1 that used for content, filename, title
+Custom template to replace some text on any data in file. This will custom template column index 0,1 that used for content, filename(default index: 0), title.
 ```
-qrgen from example_data.csv -f=png --icc=1 --icfn=0 --ict=1 --ass=top -t="A{{}},Hello {{}}"
+qrgen from example_data.csv -f=png --icc=1 --ict=1 -t="A{{}},Hello {{}}"
+```
+![A1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--ict%3D1%20-t%3D%22A%7B%7B%7D%7D%2CHello%20%7B%7B%7D%7D%22/A1.jpg) ![A2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--ict%3D1%20-t%3D%22A%7B%7B%7D%7D%2CHello%20%7B%7B%7D%7D%22/A2.jpg) ![A3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--icc%3D1%20--ict%3D1%20-t%3D%22A%7B%7B%7D%7D%2CHello%20%7B%7B%7D%7D%22/A3.jpg)
+```
+output/
+ A1.png
+ A2.png
+ A3.png
 ```
 
 
