@@ -290,7 +290,7 @@ fn generate_image(
 
         let font = FontVec::try_from_vec(font_data).expect("Error constructing Font");
 
-        let color = Rgba([0, 0, 0, 0]);
+        let color = Rgba([0, 0, 0, 255]);
 
         let mut px_scale: PxScale;
 
