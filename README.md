@@ -2,9 +2,9 @@
 Tools for generate qrcode image from command line.
 
 ## Features
-- Add custom title and font qrcode image.
+- Add title and font on qrcode image.
 - Generate multiple qr from a csv format file.
-- Template text for replace any you data (eg. QR content, Title) from list file.
+- Template for custom replace you data before generate.
 
 ## Uasge
 You can use help command to see this.
@@ -62,7 +62,7 @@ Options:
   -o, --outdir <OUTDIR>               Output directory [default: output]
   -a, --ass <ADD_SIDE_SPACE>          Side of additional space <top|bottom> [default: bottom]
       --ss <SIZE_SPACE>               Size of additional space (percent of image size) [default: 15]
-      --fp <FONT_PATH>                Path of font file (default use "IBMPlexSansThaiLooped-Light")
+      --fp <FONT_PATH>                Path of font file
       --fs <FONT_SIZE>                Font size (percentage) [default: 10]
       --tpxy <TITLE_POS_XY>           Positional of additional title (percentage), Empty this will center of additional space
   -h, --help                          Print help
