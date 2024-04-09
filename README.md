@@ -6,6 +6,11 @@ Tools for generate qrcode image from command line.
 - Generate multiple qr from a csv format file.
 - Template for custom replace you data before generate.
 
+## Download
+```sh
+curl -LO https://github.com/angkarn/qrgen/releases/download/v0.1.0-dev/qrgen | chmod +x qrgen
+```
+
 ## Uasge
 You can use help command to see this.
 `qrgen help`
