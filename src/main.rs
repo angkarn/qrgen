@@ -62,6 +62,10 @@ struct CommonArg {
     /// Positional of additional title (percentage), Empty this will center of additional space
     #[clap(long = "tpxy", value_delimiter = ',')]
     title_pos_xy: Vec<usize>,
+
+    /// Add text line space (percentage)
+    #[clap(long = "atls", default_value = "0")]
+    add_text_line_space: u32,
 }
 
 #[derive(Parser, Debug)]
@@ -106,6 +110,12 @@ struct GenArg {
     common_arg: CommonArg,
 }
 
+struct ResultGenerateImage {
+    image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    additional_space: u32,
+    reduce_text_size: Option<usize>,
+}
+
 fn main() {
     let args = Args::parse();
 
@@ -126,16 +136,21 @@ fn handle_gen_command(gen_opt: &GenArg) {
 
             println!("\n\nGenerate Image...");
 
-            generate_image(
+            let result = generate_image(
                 gen_opt.content.clone(),
                 gen_opt.common_arg.size,
-                &format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
                 &gen_opt.title,
                 &gen_opt.common_arg.add_side_space,
                 &gen_opt.common_arg.size_space,
                 &gen_opt.common_arg.title_pos_xy,
                 &gen_opt.common_arg.font_path,
                 gen_opt.common_arg.font_size,
+                gen_opt.common_arg.add_text_line_space,
+            );
+
+            handler_generate_image_result(
+                result,
+                format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
             )
         }
         _ => {}
@@ -184,18 +199,6 @@ fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
 }
 
 fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
-    // // Check config file name is duplicate of other
-    // for content in list_content.iter() {
-    //     let found_record = list_content.iter().find(|s| {
-    //         s[from_opt.index_column_filename as usize]
-    //             == content[from_opt.index_column_filename as usize]
-    //     });
-    //     if found_record.is_some() {
-    //         print!("Some config file name is duplicate of other");
-    //         return;
-    //     }
-    // }
-
     let _ = create_dir_all(from_opt.common_arg.outdir.to_string())
         .expect("Cannot create output directory!");
 
@@ -219,31 +222,55 @@ fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
             None => None,
         };
 
-        generate_image(
+        let result = generate_image(
             content[from_opt.index_column_content].to_string(),
             from_opt.common_arg.size,
-            &path_output_file,
             &title,
             &from_opt.common_arg.add_side_space,
             &from_opt.common_arg.size_space,
             &from_opt.common_arg.title_pos_xy,
             &from_opt.common_arg.font_path,
             from_opt.common_arg.font_size,
+            from_opt.common_arg.add_text_line_space,
         );
+
+        handler_generate_image_result(result, path_output_file)
+    }
+}
+
+fn handler_generate_image_result(result: Result<ResultGenerateImage, Error>, path: String) {
+    match result {
+        Ok(r) => {
+            // Show messsage when the title size was reduced
+            if r.reduce_text_size.is_some() {
+                println!(
+                    "info: title was reduced font to {}%",
+                    r.reduce_text_size.unwrap()
+                );
+            }
+
+            let save_image = r.image_buffer.save(&path);
+
+            match save_image {
+                Ok(_) => println!("created: {}", &path),
+                Err(_) => println!("Error saving image"),
+            }
+        }
+        Err(e) => println!("Error: {}", e),
     }
 }
 
 fn generate_image(
     content: String,
     size: u32,
-    path_output_file: &String,
     title: &Option<String>,
     add_side_space: &str,
     size_space: &usize,
     title_pos_xy: &[usize],
     font_path: &Option<String>,
     font_size: usize,
-) {
+    add_text_line_space: u32,
+) -> Result<ResultGenerateImage, Error> {
     // Generate a QR code and convert it to ImageBuffer
     let qr_code_buffer = qrcode_generator::to_image_buffer(content, QrCodeEcc::Low, size as usize)
         .expect("Failed to generate QR code");
@@ -280,84 +307,128 @@ fn generate_image(
     let new_image_width = new_image.width();
     let new_image_height = new_image.height();
 
+    let mut percent_font_size = 0;
+
     if !title.is_none() {
         // Get font data
         let font_data = if font_path.is_none() {
             Vec::<u8>::from(FONT_DEFAULT)
         } else {
-            read(font_path.clone().unwrap()).expect("Error read font file")
+            read(font_path.as_ref().unwrap()).expect("Error read font file")
         };
 
         let font = FontVec::try_from_vec(font_data).expect("Error constructing Font");
 
         let color = Rgba([0, 0, 0, 255]);
 
-        let mut px_scale: PxScale;
+        let title_split = title.as_ref().unwrap().split("\\n");
 
-        // Define the text to be drawn
-        let text = title.clone().unwrap().to_string();
+        struct TextDraw {
+            text: Box<str>,
+            px_scale: PxScale,
+            width: u32,
+            height: u32,
+        }
 
-        let mut _text_size: (u32, u32);
-
-        let mut percent_font_size = font_size;
+        let mut text_draw_list: Vec<TextDraw> = Vec::new();
+        let mut height_texts_sum: u32 = 0;
+        percent_font_size = font_size;
+        let mut margin_line = 0;
 
         // loop check and resize if text over size of image
-        loop {
-            // Define text properties
-            px_scale = PxScale::from((size * percent_font_size as u32 / 100) as f32);
+        'loop_check_size: loop {
+            for (index_line, line) in title_split.clone().enumerate() {
+                // Define the text to be drawn
+                let text = line;
 
-            // Calculate the total text width
-            _text_size = text_size(px_scale, &font, &text);
+                // Define text properties
+                let px_scale = PxScale::from((size * percent_font_size as u32 / 100) as f32);
 
-            if _text_size.0 <= new_image_width {
-                break;
-            }
-            percent_font_size -= 1;
-        }
+                // Calculate the total text width
+                let _text_size = text_size(px_scale, &font, &text);
 
-        // Show messsage when the title size was reduced
-        if percent_font_size < font_size {
-            println!(
-                "info: title ({}) was reduced font to {}%",
-                text, percent_font_size
-            )
-        }
+                text_draw_list.push(TextDraw {
+                    text: text.into(),
+                    px_scale,
+                    width: _text_size.0,
+                    height: _text_size.1,
+                });
 
-        // Calculate the x-coordinate to center the text
-        let x_center = (new_image_width - _text_size.0) / 2;
+                margin_line = size * (percent_font_size as u32 / 4 + add_text_line_space) / 100;
 
-        // Render text onto the image
-        draw_text_mut(
-            &mut new_image,
-            color,
-            if let [x, _] = title_pos_xy {
-                (new_image_width * *x as u32 / 100) as i32
-            } else {
-                x_center as i32
-            },
-            if let [_, y] = title_pos_xy {
-                (new_image_height * *y as u32 / 100) as i32
-            } else {
-                // Calculate to center y
-                match add_side_space {
-                    "top" => ((additional_space * 50 / 100) - _text_size.1 / 2) as i32,
-                    _ => {
-                        ((size - (size * 5 / 100) + (additional_space * 50 / 100))
-                            - _text_size.1 / 2) as i32
-                    }
+                // first line is no margin
+                if index_line > 0 {
+                    height_texts_sum += margin_line;
                 }
-            },
-            px_scale,
-            &font,
-            &text,
-        );
+
+                height_texts_sum += _text_size.1;
+
+                if _text_size.0 < new_image_width && height_texts_sum < additional_space {
+                    continue;
+                } else {
+                    percent_font_size -= 1;
+                    height_texts_sum = 0;
+                    text_draw_list = Vec::new();
+                    continue 'loop_check_size;
+                }
+            }
+            break 'loop_check_size;
+        }
+
+        let mut current_height_text_drawn: u32 = 0;
+
+        for text_draw in text_draw_list.iter() {
+            // Calculate position y relate of line
+            let start_y = current_height_text_drawn;
+
+            // Render text onto the image
+            draw_text_mut(
+                &mut new_image,
+                color,
+                if let [x, _] = title_pos_xy {
+                    (new_image_width * *x as u32 / 100) as i32
+                } else {
+                    // Calculate the x-coordinate to center the text
+                    ((new_image_width - text_draw.width) / 2) as i32
+                },
+                if let [_, y] = title_pos_xy {
+                    ((new_image_height * *y as u32 / 100) + start_y as u32) as i32
+                } else {
+                    // Calculate to center y
+                    match add_side_space {
+                        "top" => {
+                            (((additional_space * 50 / 100) - height_texts_sum as u32 / 2)
+                                + start_y as u32) as i32
+                        }
+                        _ => {
+                            let botton_y = ((size - size * 3 / 100)
+                                + (additional_space / 2 - (height_texts_sum as u32 / 2)
+                                    + start_y as u32))
+                                as i32;
+                            botton_y
+                        }
+                    }
+                },
+                text_draw.px_scale,
+                &font,
+                &text_draw.text,
+            );
+
+            current_height_text_drawn += text_draw.height + margin_line
+        }
     }
 
-    new_image
-        .save(path_output_file)
-        .expect("Error saving image");
+    let reduce_text_size = if title.is_some() && percent_font_size < font_size {
+        Some(percent_font_size)
+    } else {
+        None
+    };
 
-    println!("created: {}", path_output_file);
+    Ok(ResultGenerateImage {
+        image_buffer: new_image,
+        additional_space,
+        reduce_text_size,
+    })
 }
 
 // Print the given qrcode object to the console
