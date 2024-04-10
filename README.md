@@ -9,13 +9,13 @@ Tools for generate qrcode image from command line.
 ## Download
 ### Mac
 ```sh
-curl -LO https://github.com/angkarn/qrgen/releases/download/v0.1.0-dev/qrgen && chmod +x qrgen
+curl -L -o qrgen https://github.com/angkarn/qrgen/releases/download/v0.1.0-dev/qrgen-x86_64-apple-darwin && chmod +x qrgen
 ```
 ### Windows (x86_64)
 Can be Download from [Release](https://github.com/angkarn/qrgen/releases).
 
 ### Other
-For all platforms can be clone this repo and build it yourself.
+For other platforms can be clone this repo and build it yourself.
 
 ## Uasge
 You can use help command to see this.
