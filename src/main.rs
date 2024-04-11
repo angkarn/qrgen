@@ -1,6 +1,6 @@
 use ab_glyph::{FontVec, PxScale};
 use clap::{Parser, Subcommand};
-use csv::Error;
+use csv::Error as ErrorCsv;
 use image::ImageBuffer;
 use imageproc::image::Rgba;
 use imageproc::{
@@ -8,6 +8,7 @@ use imageproc::{
     image,
 };
 use qrcode_generator::QrCodeEcc;
+use std::error::Error;
 use std::fs::{self, create_dir_all, read};
 
 static FONT_DEFAULT: &'static [u8] = include_bytes!("NotoSansThai-Light.ttf");
@@ -63,6 +64,10 @@ struct CommonArg {
     #[clap(long = "tpxy", value_delimiter = ',')]
     title_pos_xy: Vec<usize>,
 
+    /// Flag to ignore auto reduce text size
+    #[clap(long = "nrts", action)]
+    no_reduce_text_size: bool,
+
     /// Add text line space (percentage)
     #[clap(long = "atls", default_value = "0")]
     add_text_line_space: u32,
@@ -112,7 +117,6 @@ struct GenArg {
 
 struct ResultGenerateImage {
     image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-    additional_space: u32,
     reduce_text_size: Option<usize>,
 }
 
@@ -145,6 +149,7 @@ fn handle_gen_command(gen_opt: &GenArg) {
                 &gen_opt.common_arg.title_pos_xy,
                 &gen_opt.common_arg.font_path,
                 gen_opt.common_arg.font_size,
+                gen_opt.common_arg.no_reduce_text_size,
                 gen_opt.common_arg.add_text_line_space,
             );
 
@@ -231,6 +236,7 @@ fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
             &from_opt.common_arg.title_pos_xy,
             &from_opt.common_arg.font_path,
             from_opt.common_arg.font_size,
+            from_opt.common_arg.no_reduce_text_size,
             from_opt.common_arg.add_text_line_space,
         );
 
@@ -238,14 +244,18 @@ fn generate_list_image(list_content: Vec<Vec<String>>, from_opt: &FromArg) {
     }
 }
 
-fn handler_generate_image_result(result: Result<ResultGenerateImage, Error>, path: String) {
+fn handler_generate_image_result(
+    result: Result<ResultGenerateImage, Box<dyn Error>>,
+    path: String,
+) {
     match result {
         Ok(r) => {
             // Show messsage when the title size was reduced
             if r.reduce_text_size.is_some() {
                 println!(
-                    "info: title was reduced font to {}%",
-                    r.reduce_text_size.unwrap()
+                    "Info: title was reduced font to {}%. > {}",
+                    r.reduce_text_size.unwrap(),
+                    path
                 );
             }
 
@@ -256,7 +266,7 @@ fn handler_generate_image_result(result: Result<ResultGenerateImage, Error>, pat
                 Err(_) => println!("Error saving image"),
             }
         }
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {} > {}", e, path),
     }
 }
 
@@ -269,8 +279,9 @@ fn generate_image(
     title_pos_xy: &[usize],
     font_path: &Option<String>,
     font_size: usize,
+    no_reduce_text_size: bool,
     add_text_line_space: u32,
-) -> Result<ResultGenerateImage, Error> {
+) -> Result<ResultGenerateImage, Box<dyn Error>> {
     // Generate a QR code and convert it to ImageBuffer
     let qr_code_buffer = qrcode_generator::to_image_buffer(content, QrCodeEcc::Low, size as usize)
         .expect("Failed to generate QR code");
@@ -336,7 +347,7 @@ fn generate_image(
         let mut margin_line = 0;
 
         // loop check and resize if text over size of image
-        'loop_check_size: loop {
+        let result_loop_check_size = 'loop_check_size: loop {
             for (index_line, line) in title_split.clone().enumerate() {
                 // Define the text to be drawn
                 let text = line;
@@ -366,13 +377,21 @@ fn generate_image(
                 if _text_size.0 < new_image_width && height_texts_sum < additional_space {
                     continue;
                 } else {
+                    if no_reduce_text_size {
+                        break 'loop_check_size Some("Text size is over base image. try run with out flag `no_reduce_text_size`.");
+                    }
+
                     percent_font_size -= 1;
                     height_texts_sum = 0;
                     text_draw_list = Vec::new();
                     continue 'loop_check_size;
                 }
             }
-            break 'loop_check_size;
+            break 'loop_check_size None;
+        };
+
+        if result_loop_check_size.is_some() {
+            return Err(result_loop_check_size.unwrap().into());
         }
 
         let mut current_height_text_drawn: u32 = 0;
@@ -426,7 +445,6 @@ fn generate_image(
 
     Ok(ResultGenerateImage {
         image_buffer: new_image,
-        additional_space,
         reduce_text_size,
     })
 }
@@ -467,7 +485,7 @@ fn process_file(
     path: &String,
     template: &Vec<String>,
     symbol_mark_replace: &String,
-) -> Result<Vec<Vec<String>>, Error> {
+) -> Result<Vec<Vec<String>>, ErrorCsv> {
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(path)?;
