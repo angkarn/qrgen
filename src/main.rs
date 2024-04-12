@@ -41,15 +41,15 @@ struct CommonArg {
     size: u32,
 
     /// Output directory
-    #[clap(short, long, default_value = "output")]
+    #[clap(short = 'o', long, default_value = "output")]
     outdir: String,
 
-    /// Size of top additional space (percent of image size)
-    #[clap(short, long = "ts", default_value = "15")]
+    /// Size of top (percent of image size)
+    #[clap(long = "ts", default_value = "15")]
     top_space: usize,
 
-    /// Size of bottom additional space (percent of image size)
-    #[clap(short, long = "bs", default_value = "15")]
+    /// Size of bottom (percent of image size)
+    #[clap(long = "bs", default_value = "15")]
     bottom_space: usize,
 
     /// Positional of text top
@@ -68,25 +68,25 @@ struct CommonArg {
     #[clap(long = "fs", default_value = "10")]
     font_size: usize,
 
-    /// Flag to ignore auto reduce text size
-    #[clap(long = "nrts", action)]
-    no_reduce_text_size: bool,
-
     /// Add text line space (percentage)
     #[clap(long = "atls", default_value = "0")]
     add_text_line_space: u32,
+
+    /// Flag to ignore auto reduce text size
+    #[clap(long = "nrts")]
+    no_reduce_text_size: bool,
 }
 
 #[derive(Parser, Debug)]
 #[command(
-    after_help = "TEMPLATE: Use {{INDEX_COLUMN}} to replace from data. eg. `Hello {{1}}` is replace {{1}} to index 1 on row."
+    after_help = "TEMPLATE: Can be use {{INDEX_COLUMN}} to replace from data (Starting at 0). eg. `Hello {{1}}` is replace {{1}} to data of index 1 on row."
 )]
 struct FromArg {
     /// Path file of list content
     path: String,
 
     /// Template content
-    #[clap(long = "tc", default_value = "{{0}}")]
+    #[clap(short = 't', long = "tc", default_value = "{{0}}")]
     template_content: String,
 
     /// Template for text on top.
@@ -358,7 +358,7 @@ fn prepare_text_draw(
                 continue;
             } else {
                 if no_reduce_text_size {
-                    break 'loop_check_size Some("Text size is over base image. try run with out flag `no_reduce_text_size`.");
+                    break 'loop_check_size Some("Text size is over base image. try run without flag `--nrts` no_reduce_text_size.");
                 }
 
                 per_font_size -= 1;
@@ -463,7 +463,7 @@ fn generate_image(
                 cal_bottom_space as u32,
                 no_reduce_text_size,
             )
-            .expect("Error: prepare text draw (bottom)");
+            .expect("Error: Prepare text draw (bottom)");
 
             reduce_bottom_text_size = text_bottom_draw_data.reduce_text_size;
 
