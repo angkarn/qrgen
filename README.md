@@ -4,9 +4,9 @@ Tools for generate qrcode image from command line.
 
 ## Features
 
-- Add title and font on qrcode image.
+- Add text on image.
 - Generate multiple qr from a csv format file.
-- Template for custom replace you data before generate.
+- Custom multiple data by template!.
 
 ## Download
 
@@ -113,10 +113,10 @@ qrgen gen "Hello World" -f=png -s=500
 ```
 
 Add custom text to image both top and bottom. Also handle the new line.
-
 ```
 qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
 ```
+![qr.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/gen%20%22Hello%20World%22%20-f%3Dpng%20-t%3D%22QR%20Generator%22%20-b%3D%22Hello%5CnWorld%22/qr.jpg)
 
 #### from
 
@@ -126,12 +126,11 @@ qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
 3,C
 ```
 
-Generate from list file with custom template content, filename.
-
+Generate from list file with custom template of content, filename.
 ```
 qrgen from example_data.csv -f=png --tc="{{0}}:{{1}}" --tfn="no_{{0}}"
 ```
-
+![no_1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_1.jpg) ![no_2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_2.jpg) ![no_3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_3.jpg)
 ```
 output/
  no_1.png
@@ -140,7 +139,10 @@ output/
 ```
 
 Add custom text of both side.
-
 ```
 qrgen from example_data.csv -f=png --ttt="QR Gen" --ttb="#{{0}}: {{1}}"
 ```
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/3.jpg)
+
+
+
