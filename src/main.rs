@@ -33,7 +33,7 @@ enum Command {
 #[derive(Parser, Debug)]
 struct CommonArg {
     /// Format output (console|png)
-    #[clap(short, long, default_value = "console")]
+    #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
     /// Size of image
@@ -44,20 +44,20 @@ struct CommonArg {
     #[clap(short = 'o', long, default_value = "output")]
     outdir: String,
 
-    /// Size of top (percent of image size)
+    /// Size of top space (percent of qr size)
     #[clap(long = "ts", default_value = "15")]
     top_space: usize,
 
-    /// Size of bottom (percent of image size)
+    /// Size of bottom space (percent of qr size)
     #[clap(long = "bs", default_value = "15")]
     bottom_space: usize,
 
     /// Positional of text top
-    #[clap(long = "ttp", default_value = "center")]
+    #[clap(long = "ttp", default_value = "center", hide = true)]
     top_text_pos: String,
 
     /// Positional of text bottom
-    #[clap(long = "btp", default_value = "center")]
+    #[clap(long = "btp", default_value = "center", hide = true)]
     bottom_text_pos: String,
 
     /// Path of font file
@@ -111,11 +111,11 @@ struct GenArg {
     content: String,
 
     /// Text on top of image
-    #[clap(short, long)]
+    #[clap(short = 't', long, default_value = "")]
     top_text: String,
 
     /// Text on bottom of image
-    #[clap(short, long)]
+    #[clap(short = 'b', long, default_value = "")]
     bottom_text: String,
 
     #[command(flatten)]
