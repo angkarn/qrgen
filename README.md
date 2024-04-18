@@ -53,7 +53,7 @@ Arguments:
 Options:
   -t, --top-text <TOP_TEXT>         Text on top of image [default: ]
   -b, --bottom-text <BOTTOM_TEXT>   Text on bottom of image [default: ]
-  -f, --format <FORMAT>             Format output (console|png) [default: console]
+  -f, --format <FORMAT>             Format output (console|png) "console" will no custom text [default: console]
   -s, --size <SIZE>                 Size of image [default: 1024]
   -o, --outdir <OUTDIR>             Output directory [default: output]
       --ts <TOP_SPACE>              Size of top space (percent of qr size) [default: 15]
@@ -82,7 +82,7 @@ Options:
       --ttt <TEMPLATE_TEXT_TOP>     Template for text on top [default: ]
       --ttb <TEMPLATE_TEXT_BOTTOM>  Template for text on bottom [default: ]
       --tfn <TEMPLATE_FILENAME>     Template filename [default: {{0}}]
-  -f, --format <FORMAT>             Format output (console|png) [default: console]
+  -f, --format <FORMAT>             Format output (console|png) "console" will no custom text [default: console]
   -s, --size <SIZE>                 Size of image [default: 1024]
   -o, --outdir <OUTDIR>             Output directory [default: output]
       --ts <TOP_SPACE>              Size of top space (percent of qr size) [default: 15]
