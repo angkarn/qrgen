@@ -1,7 +1,7 @@
 mod utils;
 use clap::{Parser, Subcommand};
-use std::error::Error;
-use std::fs::{self, create_dir_all};
+use rayon::prelude::*;
+use std::fs::{create_dir_all, metadata};
 
 /// QR Code Generator Tools
 #[derive(Parser, Debug)]
@@ -22,7 +22,7 @@ enum Command {
 
 #[derive(Parser, Debug)]
 struct CommonArg {
-    /// Format output (console|png)
+    /// Format output (console|png) "console" will no custom text
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
@@ -147,10 +147,13 @@ fn handle_gen_command(gen_opt: &GenArg) {
                 gen_opt.common_arg.add_text_line_space,
             );
 
-            result_generate_image(
+            match handler_result_generate_image(
                 result,
                 format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
-            )
+            ) {
+                Ok(r) => println!("{}", r),
+                Err(e) => println!("{}", e),
+            }
         }
         _ => {}
     }
@@ -159,10 +162,7 @@ fn handle_gen_command(gen_opt: &GenArg) {
 fn handle_from_command(from_opt: &FromArg) {
     let list_data = utils::process_file::csv_to_vec(&from_opt.path).expect("Error processing file");
 
-    println!("\nSample data processed:");
-    print!("> {:?}", list_data.get(0).expect("No data after process"));
-
-    println!("\n\nGenerate Images...");
+    println!("Generate Images...");
 
     match from_opt.common_arg.format.as_str() {
         "console" => generate_list_console(list_data, from_opt),
@@ -186,49 +186,67 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
     let _ = create_dir_all(from_opt.common_arg.outdir.to_string())
         .expect("Cannot create output directory!");
 
-    for row in list_data.iter() {
-        let content = utils::template::from_vec(row.to_vec(), &from_opt.template_content);
-        let raw_filename = utils::template::from_vec(row.to_vec(), &from_opt.template_filename);
-        let text_top = utils::template::from_vec(row.to_vec(), &from_opt.template_text_top);
-        let text_bottom = utils::template::from_vec(row.to_vec(), &from_opt.template_text_bottom);
+    let result_generate_image: Vec<bool> = list_data
+        .par_iter()
+        .map(|row| {
+            let content = utils::template::from_vec(row.to_vec(), &from_opt.template_content);
+            let raw_filename = utils::template::from_vec(row.to_vec(), &from_opt.template_filename);
+            let text_top = utils::template::from_vec(row.to_vec(), &from_opt.template_text_top);
+            let text_bottom =
+                utils::template::from_vec(row.to_vec(), &from_opt.template_text_bottom);
 
-        // Save the image with a unique filename
-        let filename = raw_filename.replace("/", "_");
-        let mut path_output_file: String =
-            format!("{}/{}.png", from_opt.common_arg.outdir, filename);
+            // Save the image with a unique filename
+            let filename = raw_filename.replace("/", "_");
+            let mut path_output_file: String =
+                format!("{}/{}.png", from_opt.common_arg.outdir, filename);
 
-        let mut counter = 0;
-        while fs::metadata(&path_output_file).is_ok() {
-            counter += 1;
-            path_output_file = format!(
-                "{}/{}_{}.png",
-                from_opt.common_arg.outdir, filename, counter
+            let mut counter = 0;
+            while metadata(&path_output_file).is_ok() {
+                counter += 1;
+                path_output_file = format!(
+                    "{}/{}_{}.png",
+                    from_opt.common_arg.outdir, filename, counter
+                );
+            }
+
+            let result = utils::generate::generate_image(
+                content.to_string(),
+                from_opt.common_arg.size,
+                &text_top,
+                &text_bottom,
+                from_opt.common_arg.top_space,
+                from_opt.common_arg.bottom_space,
+                &from_opt.common_arg.top_text_pos,
+                &from_opt.common_arg.bottom_text_pos,
+                &from_opt.common_arg.font_path,
+                from_opt.common_arg.font_size,
+                from_opt.common_arg.no_reduce_text_size,
+                from_opt.common_arg.add_text_line_space,
             );
-        }
 
-        let result = utils::generate::generate_image(
-            content.to_string(),
-            from_opt.common_arg.size,
-            &text_top,
-            &text_bottom,
-            from_opt.common_arg.top_space,
-            from_opt.common_arg.bottom_space,
-            &from_opt.common_arg.top_text_pos,
-            &from_opt.common_arg.bottom_text_pos,
-            &from_opt.common_arg.font_path,
-            from_opt.common_arg.font_size,
-            from_opt.common_arg.no_reduce_text_size,
-            from_opt.common_arg.add_text_line_space,
-        );
+            match handler_result_generate_image(result, path_output_file) {
+                Ok(r) => {
+                    println!("{}", r);
+                    true
+                }
+                Err(e) => {
+                    println!("{}", e);
+                    false
+                }
+            }
+        })
+        .collect();
 
-        result_generate_image(result, path_output_file)
-    }
+    let count_success = result_generate_image.iter().filter(|x| **x).count();
+    let count_error = result_generate_image.iter().count() - count_success;
+
+    println!("Success {}, Error {} files.", count_success, count_error);
 }
 
-fn result_generate_image(
-    result: Result<utils::generate::ResultGenerateImage, Box<dyn Error>>,
+fn handler_result_generate_image(
+    result: Result<utils::generate::ResultGenerateImage, String>,
     path: String,
-) {
+) -> Result<String, String> {
     match result {
         Ok(r) => {
             // Show messsage when the title size was reduced
@@ -252,10 +270,10 @@ fn result_generate_image(
             let save_image = r.image_buffer.save(&path);
 
             match save_image {
-                Ok(_) => println!("created: {}", &path),
-                Err(_) => println!("Error saving image"),
+                Ok(_) => Ok(format!("Created: {}", &path)),
+                Err(e) => Err(e.to_string()),
             }
         }
-        Err(e) => println!("Error: {} > {}", e, path),
+        Err(e) => Err(format!("Error: {} > {}", e, path)),
     }
 }

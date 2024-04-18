@@ -1,11 +1,10 @@
-use std::{error::Error, fs::read};
-
 use ab_glyph::{FontVec, PxScale};
 use imageproc::{
     drawing::{draw_text_mut, text_size},
     image::{ImageBuffer, Rgba},
 };
 use qrcode_generator::QrCodeEcc;
+use std::fs::read;
 
 static FONT_DEFAULT: &'static [u8] = include_bytes!("../NotoSansThai-Light.ttf");
 
@@ -123,7 +122,7 @@ pub fn generate_image(
     font_size: usize,
     no_reduce_text_size: bool,
     add_text_line_space: u32,
-) -> Result<ResultGenerateImage, Box<dyn Error>> {
+) -> Result<ResultGenerateImage, String> {
     // Generate a QR code and convert it to ImageBuffer
     let qr_code_buffer = qrcode_generator::to_image_buffer(content, QrCodeEcc::Low, size as usize)
         .expect("Failed to generate QR code");
@@ -179,7 +178,7 @@ pub fn generate_image(
 
         // Text Bottom
         if !text_bottom.is_empty() {
-            let text_bottom_draw_data = prepare_text_draw(
+            let text_bottom_draw_data = match prepare_text_draw(
                 text_bottom.to_string(),
                 size,
                 font_size as u32,
@@ -187,8 +186,10 @@ pub fn generate_image(
                 add_text_line_space,
                 cal_bottom_space as u32,
                 no_reduce_text_size,
-            )
-            .expect("Error: Prepare text draw (bottom)");
+            ) {
+                Ok(r) => r,
+                Err(e) => return Err(e),
+            };
 
             reduce_bottom_text_size = text_bottom_draw_data.reduce_text_size;
 
