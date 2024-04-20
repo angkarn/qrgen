@@ -122,9 +122,19 @@ pub fn generate_image(
     font_size: usize,
     no_reduce_text_size: bool,
     add_text_line_space: u32,
+    error_correction_level: &String,
 ) -> Result<ResultGenerateImage, String> {
+    // set qr error correction level
+    let ecc = match error_correction_level.as_str() {
+        "l" => QrCodeEcc::Low,
+        "m" => QrCodeEcc::Medium,
+        "q" => QrCodeEcc::Quartile,
+        "h" => QrCodeEcc::High,
+        _ => QrCodeEcc::Medium,
+    };
+
     // Generate a QR code and convert it to ImageBuffer
-    let qr_code_buffer = qrcode_generator::to_image_buffer(content, QrCodeEcc::Low, size as usize)
+    let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, size as usize)
         .expect("Failed to generate QR code");
 
     // Define the additional space to be added on top

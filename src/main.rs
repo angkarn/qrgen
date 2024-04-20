@@ -65,6 +65,10 @@ struct CommonArg {
     /// Flag to ignore auto reduce text size
     #[clap(long = "nrts")]
     no_reduce_text_size: bool,
+
+    /// The error correction level in a QR Code symbol. [l|m|q|h]
+    #[clap(long = "ecc", default_value = "m")]
+    error_correction_level: String,
 }
 
 #[derive(Parser, Debug)]
@@ -145,6 +149,7 @@ fn handle_gen_command(gen_opt: &GenArg) {
                 gen_opt.common_arg.font_size,
                 gen_opt.common_arg.no_reduce_text_size,
                 gen_opt.common_arg.add_text_line_space,
+                &gen_opt.common_arg.error_correction_level,
             );
 
             match handler_result_generate_image(
@@ -222,6 +227,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
                 from_opt.common_arg.font_size,
                 from_opt.common_arg.no_reduce_text_size,
                 from_opt.common_arg.add_text_line_space,
+                &from_opt.common_arg.error_correction_level,
             );
 
             match handler_result_generate_image(result, path_output_file) {
