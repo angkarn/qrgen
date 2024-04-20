@@ -1,6 +1,5 @@
 mod utils;
 use clap::{Parser, Subcommand};
-use imageproc::image::DynamicImage;
 use rayon::prelude::*;
 use std::fs::{create_dir_all, metadata};
 
@@ -274,9 +273,7 @@ fn handler_result_generate_image(
                 );
             }
 
-            let save_image = DynamicImage::ImageRgb8(r.image_buffer)
-                .into_luma8()
-                .save(&path);
+            let save_image = r.image_buffer.into_luma8().save(&path);
 
             match save_image {
                 Ok(_) => Ok(format!("Created: {}", &path)),

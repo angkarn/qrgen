@@ -1,7 +1,7 @@
 use ab_glyph::{FontVec, PxScale};
 use imageproc::{
     drawing::{draw_text_mut, text_size},
-    image::{ImageBuffer, Rgb},
+    image::{DynamicImage, ImageBuffer, Rgb},
 };
 use qrcode_generator::QrCodeEcc;
 use std::fs::read;
@@ -9,7 +9,7 @@ use std::fs::read;
 static FONT_DEFAULT: &'static [u8] = include_bytes!("../NotoSansThai-Light.ttf");
 
 pub struct ResultGenerateImage {
-    pub image_buffer: ImageBuffer<Rgb<u8>, Vec<u8>>,
+    pub image_buffer: DynamicImage,
     pub reduce_bottom_text_size: Option<u32>,
     pub reduce_top_text_size: Option<u32>,
 }
@@ -246,7 +246,7 @@ pub fn generate_image(
     }
 
     Ok(ResultGenerateImage {
-        image_buffer: new_image,
+        image_buffer: DynamicImage::ImageRgb8(new_image),
         reduce_top_text_size,
         reduce_bottom_text_size,
     })
