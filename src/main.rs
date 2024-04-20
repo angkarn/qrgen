@@ -66,7 +66,7 @@ struct CommonArg {
     #[clap(long = "nrts")]
     no_reduce_text_size: bool,
 
-    /// The error correction level in a QR Code symbol. [l|m|q|h]
+    /// The error correction level in a QR Code symbol. (l|m|q|h)
     #[clap(long = "ecc", default_value = "m")]
     error_correction_level: String,
 }
