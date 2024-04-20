@@ -118,7 +118,7 @@ Add custom text to image both top and bottom. Also handle the new line.
 ```
 qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
 ```
-![qr.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/text_top_bottom/qr.jpg)
+![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/text_top_bottom/qr.jpg)
 
 #### from
 
@@ -132,7 +132,7 @@ Generate from list file with custom template of content, filename.
 ```
 qrgen from example_data.csv -f=png --tc="{{0}}:{{1}}" --tfn="no_{{0}}"
 ```
-![no_1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_1.jpg) ![no_2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_2.jpg) ![no_3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_3.jpg)
+![no_1](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_1.jpg) ![no_2](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_2.jpg) ![no_3](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_3.jpg)
 ```
 output/
  no_1.png
@@ -144,18 +144,18 @@ Add custom text of both side.
 ```
 qrgen from example_data.csv -f=png --ttt="QR Gen" --ttb="#{{0}}: {{1}}"
 ```
-![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/3.jpg)
+![1](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/1.jpg) ![2](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/2.jpg) ![3](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/3.jpg)
 
 Custom font.
 ```
 qrgen gen "QR Generate" -f=png -b="QR Generate" --fp="fonts/Bangers-Regular.ttf"
 ```
-![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font/qr.jpg)
+![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font/qr.jpg)
 
 ```
 qrgen gen "1234" -f=png -b="*1234*" --fp="fonts/LibreBarcode39-Regular.ttf" --fs=20
 ```
-![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font_barcode/qr.jpg)
+![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font_barcode/qr.jpg)
 
 
 
