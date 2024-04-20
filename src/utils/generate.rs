@@ -1,7 +1,7 @@
 use ab_glyph::{FontVec, PxScale};
 use imageproc::{
     drawing::{draw_text_mut, text_size},
-    image::{ImageBuffer, Rgba},
+    image::{ImageBuffer, Rgb},
 };
 use qrcode_generator::QrCodeEcc;
 use std::fs::read;
@@ -9,7 +9,7 @@ use std::fs::read;
 static FONT_DEFAULT: &'static [u8] = include_bytes!("../NotoSansThai-Light.ttf");
 
 pub struct ResultGenerateImage {
-    pub image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    pub image_buffer: ImageBuffer<Rgb<u8>, Vec<u8>>,
     pub reduce_bottom_text_size: Option<u32>,
     pub reduce_top_text_size: Option<u32>,
 }
@@ -155,7 +155,7 @@ pub fn generate_image(
     let mut new_image = ImageBuffer::from_pixel(
         qr_code_buffer.width(),
         qr_code_buffer.height() + cal_top_space + cal_bottom_space,
-        Rgba([255, 255, 255, 255]),
+        Rgb([255, 255, 255]),
     );
 
     // Copy the QR code image onto the new image
@@ -165,7 +165,7 @@ pub fn generate_image(
             new_image.put_pixel(
                 x,
                 y + cal_top_space as u32,
-                Rgba([pixel_value, pixel_value, pixel_value, 255]),
+                Rgb([pixel_value, pixel_value, pixel_value]),
             );
         }
     }
@@ -184,7 +184,7 @@ pub fn generate_image(
 
         let font = FontVec::try_from_vec(font_data).expect("Error constructing Font");
 
-        let color = Rgba([0, 0, 0, 255]);
+        let color = Rgb([0, 0, 0]);
 
         // Text Bottom
         if !text_bottom.is_empty() {
@@ -245,10 +245,8 @@ pub fn generate_image(
         }
     }
 
-    let output_image = new_image.clone();
-
     Ok(ResultGenerateImage {
-        image_buffer: output_image,
+        image_buffer: new_image,
         reduce_top_text_size,
         reduce_bottom_text_size,
     })
@@ -259,9 +257,9 @@ fn process_draw_text(
     text_draw_data: Vec<TextDraw>,
     height_texts_sum: u32,
     line_height: u32,
-    base_image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    base_image: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
     side_space: u32,
-    color: Rgba<u8>,
+    color: Rgb<u8>,
     font: &FontVec,
     text_pos: String,
     side: String,
