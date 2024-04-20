@@ -118,7 +118,7 @@ Add custom text to image both top and bottom. Also handle the new line.
 ```
 qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
 ```
-![qr.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/gen%20%22Hello%20World%22%20-f%3Dpng%20-t%3D%22QR%20Generator%22%20-b%3D%22Hello%5CnWorld%22/qr.jpg)
+![qr.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/text_top_bottom/qr.jpg)
 
 #### from
 
@@ -132,7 +132,7 @@ Generate from list file with custom template of content, filename.
 ```
 qrgen from example_data.csv -f=png --tc="{{0}}:{{1}}" --tfn="no_{{0}}"
 ```
-![no_1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_1.jpg) ![no_2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_2.jpg) ![no_3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--tc%3D%22%7B%7B0%7D%7D%3A%7B%7B1%7D%7D%22%20--tfn%3D%22no_%7B%7B0%7D%7D%22/no_3.jpg)
+![no_1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_1.jpg) ![no_2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_2.jpg) ![no_3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_3.jpg)
 ```
 output/
  no_1.png
@@ -144,7 +144,18 @@ Add custom text of both side.
 ```
 qrgen from example_data.csv -f=png --ttt="QR Gen" --ttb="#{{0}}: {{1}}"
 ```
-![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/from%20example_data.csv%20-f%3Dpng%20--ttt%3D%22QR%20Gen%22%20--ttb%3D%22%23%7B%7B0%7D%7D%3A%20%7B%7B1%7D%7D%22/3.jpg)
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/1.jpg) ![2.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/2.jpg) ![3.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/3.jpg)
+
+Custom font.
+```
+qrgen gen "QR Generate" -f=png -b="QR Generate" --fp="fonts/Bangers-Regular.ttf"
+```
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font/qr.jpg)
+
+```
+qrgen gen "1234" -f=png -b="*1234*" --fp="fonts/LibreBarcode39-Regular.ttf" --fs=20
+```
+![1.png](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font_barcode/qr.jpg)
 
 
 
