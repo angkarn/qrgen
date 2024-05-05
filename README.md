@@ -1,12 +1,14 @@
 # QR Code Generator
 
-Tools for generate qrcode image from command line.
+Tools for generate qrcode image from command line written in Rust.
 
 ## Features
 
-- Add text on image.
+- Add custom text on image.
 - Generate multiple qr from a csv format file.
-- Custom multiple data by template!.
+- Custom multiple data e.g. content, text, filename by template!.
+- Very small image file.
+- Already build target to WASI. [Bonus!](#bonus)
 
 ## Download
 
@@ -111,12 +113,12 @@ qrgen gen "Hello World"
 Save to image file and custom size.
 
 ```
-qrgen gen "Hello World" -f=png -s=500
+qrgen gen "Hello World" -f png -s 500
 ```
 
 Add custom text to image both top and bottom. Also handle the new line.
 ```
-qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
+qrgen gen "Hello World" -f png -t "QR Generator" -b "Hello\nWorld"
 ```
 ![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/text_top_bottom/qr.jpg)
 
@@ -130,7 +132,7 @@ qrgen gen "Hello World" -f=png -t="QR Generator" -b="Hello\nWorld"
 
 Generate from list file with custom template of content, filename.
 ```
-qrgen from example_data.csv -f=png --tc="{{0}}:{{1}}" --tfn="no_{{0}}"
+qrgen from example_data.csv -f png --tc "{{0}}:{{1}}" --tfn "no_{{0}}"
 ```
 ![no_1](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_1.jpg) ![no_2](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_2.jpg) ![no_3](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/template_content_filename/no_3.jpg)
 ```
@@ -142,20 +144,26 @@ output/
 
 Add custom text of both side.
 ```
-qrgen from example_data.csv -f=png --ttt="QR Gen" --ttb="#{{0}}: {{1}}"
+qrgen from example_data.csv -f png --ttt "QR Gen" --ttb "#{{0}}: {{1}}"
 ```
 ![1](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/1.jpg) ![2](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/2.jpg) ![3](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/list_custom_text/3.jpg)
 
 Custom font.
 ```
-qrgen gen "QR Generate" -f=png -b="QR Generate" --fp="fonts/Bangers-Regular.ttf"
+qrgen gen "QR Generate" -f png -b "QR Generate" --fp "fonts/Bangers-Regular.ttf"
 ```
 ![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font/qr.jpg)
 
 ```
-qrgen gen "1234" -f=png -b="*1234*" --fp="fonts/LibreBarcode39-Regular.ttf" --fs=20
+qrgen gen "1234" -f png -b "*1234*" --fp "fonts/LibreBarcode39-Regular.ttf" --fs 20
 ```
 ![qr](https://raw.githubusercontent.com/angkarn/qrgen/main/example/assets/custom_font_barcode/qr.jpg)
 
+## Bonus!
+Web demo uses wasm file from build target to WebAssembly (WASI) `wasm32-wasi`. It can run on client browser.
+[Demo](https://qrgen-rs.pages.dev)
+
+## Build
+You can build by follow basic rust tool like cargo.
 
 
