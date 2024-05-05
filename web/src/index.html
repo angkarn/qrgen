@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+        }
+
+        body {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        p {
+            margin: 10px;
+        }
+
+        #terminal {
+            height: 100%;
+            background: black;
+        }
+
+        #action {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: #fff;
+            padding: 5px;
+            min-width: 200px;
+            max-width: calc(100% - 40px);
+        }
+
+        #showActionBtn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        #dir {
+            overflow: auto;
+            height: 100%;
+            max-height: 300px;
+            padding: 0 5px;
+            padding-bottom: 20px;
+            display: grid;
+        }
+
+        #dir .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            gap: 10px;
+        }
+
+        #dir .item a {
+            padding-top: 3px;
+        }
+
+        .item.file {
+            color: #212121;
+        }
+
+        .item:hover {
+            background-color: #F5F5F5;
+        }
+
+        [data-file] {
+            cursor: pointer;
+        }
+
+        .item.dir {
+            color: cadetblue;
+        }
+
+        .subdir {
+            padding-left: 10px;
+        }
+
+        #closeBtn {
+            all: unset;
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: grey;
+            cursor: pointer;
+        }
+
+        #preview {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 15;
+            height: 100vh;
+            width: 100vw;
+            background: #212121;
+        }
+
+        #closePreviewBtn {
+            all: unset;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgb(170, 170, 170);
+            cursor: pointer;
+        }
+
+        .wrapImgPreview {
+            width: 100%;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        #imgPreview {
+            max-width: calc(100% - 40px);
+            max-height: calc(100% - 40px);
+            margin: 0 auto;
+        }
+
+        #iframePreview {
+            width: 100%;
+            height: 100%;
+            max-width: calc(100% - 40px);
+            max-height: calc(100% - 40px);
+            margin: 0 auto;
+            border: none;
+        }
+
+        .dirDownload {
+            cursor: pointer;
+        }
+
+        #guiSection {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            height: 100vh;
+            width: 100vw;
+            background-color: #212121;
+            margin: 0 auto;
+            overflow: auto;
+        }
+
+        #guiBody {
+            background-color: white;
+            padding: 10px 20px 20px 20px;
+            min-width: 300px;
+        }
+
+        #guiContainer {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            max-height: 100%;
+        }
+
+        #guiHead {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        input[type=text],
+        input[type=number],
+        textarea {
+            padding: 4px;
+            width: 100%;
+        }
+
+        .form {
+            margin-top: 10px;
+        }
+
+        .form>div {
+            margin: 6px auto;
+        }
+
+        .form label {
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        input[type=radio] {
+            margin: 0 4px 0 0;
+        }
+
+        #commandGenerated {
+            margin: 10px auto;
+            background-color: #212121;
+            padding: 2px 4px;
+            color: #fff;
+            display: block;
+            word-break: break-all;
+        }
+
+        #guiDownloadBtn,
+        #processing,
+        #guiErrorResult {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="terminal"></div>
+    <button id="showActionBtn">Show Action</button>
+    <div id="action">
+        <div style="display: flex;align-items: center;gap: 6px;padding-right: 30px;">
+            <input type="file" name="file" multiple id="file" hidden>
+            <button id="uploadBtn">Upload</button>
+            <button id="guiBtn">GUI Helper</button>
+            <a href="https://github.com/angkarn/qrgen"><img width="25" src="assets/github-mark.svg" alt=""></a>
+        </div>
+        <button id="closeBtn">➖</button>
+        <hr>
+        <div id="dir"></div>
+    </div>
+    <div id="guiSection">
+        <div id="guiContainer">
+            <div id="guiBody">
+                <div id="guiHead">
+                    <b>GUI Helper</b>
+                    <button id="guiCloseBtn">➖</button>
+                </div>
+                <div>
+                    <div style="display: flex;align-items: center; gap: 10px;">
+                        <div style="display: flex;align-items: center;">
+                            <input type="radio" name="mode" id="genInput" value="gen" checked>
+                            <label for="genInput">Input</label>
+                        </div>
+                        <div class="" style="display: flex;">
+                            <input type="radio" name="mode" id="fromInput" value="from">
+                            <label for="fromInput">File</label>
+                        </div>
+                    </div>
+                    <div id="forGen" class="form">
+                        <div>
+                            <label for="contentInput">Content</label>
+                            <textarea type="text" id="contentInput"></textarea>
+                        </div>
+                        <div>
+                            <label for="topTextInput">Top Text</label>
+                            <textarea type="text" id="topTextInput"></textarea>
+                        </div>
+                        <div>
+                            <label for="bottomTextInput">Bottom Text</label>
+                            <textarea type="text" id="bottomTextInput"></textarea>
+                        </div>
+                    </div>
+                    <div id="forFrom" class="form" style="display: none;">
+                        <div>
+                            <label for="contentInput">File (CSV format)</label>
+                            <input type="file" id="guiContentFile" hidden>
+                            <button id="guiUploadContentBtn">Upload</button>
+                        </div>
+                        <div>
+                            <label for="contentTemplateInput">Content Template</label>
+                            <input type="text" id="contentTemplateInput">
+                        </div>
+                        <div>
+                            <label for="topTextTemplateInput">Top Text Template</label>
+                            <input type="text" id="topTextTemplateInput">
+                        </div>
+                        <div>
+                            <label for="bottomTextTemplateInput">Bottom Text Template</label>
+                            <input type="text" id="bottomTextTemplateInput">
+                        </div>
+                        <div>
+                            <label for="fileNameTemplateInput">File Name Template</label>
+                            <input type="text" id="fileNameTemplateInput">
+                        </div>
+                    </div>
+                    <div class="form">
+                        <div>
+                            <label for="contentInput">Custom Font (ttf)</label>
+                            <input type="file" id="guiFontFile" hidden>
+                            <button id="guiUploadFontBtn">Upload</button>
+                        </div>
+                        <div>
+                            <label for="fontSizeInput">Font Size</label>
+                            <input type="number" id="fontSizeInput">
+                        </div>
+                        <div>
+                            <label for="imageSizeInput">Image size</label>
+                            <input type="number" id="imageSizeInput">
+                        </div>
+                    </div>
+                </div>
+                <br>
+                <div style="text-align: center;">
+                    <div>
+                        <button id="guiGenerateBtn">Generate Command</button>
+                    </div>
+
+                    <code style="text-align: left;" id="commandGenerated"></code>
+                    <div>
+                        <button id="guiGenerateRunBtn">Generate & Run</button>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <span id="processing">Processing...</span>
+                        <span id="guiErrorResult">Error, Check the output</span>
+                    </div>
+
+                    <div style="margin-top: 10px;">
+                        <button id="guiDownloadBtn">Download</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="preview">
+        <button id="closePreviewBtn">close</button>
+        <div class="wrapImgPreview">
+            <img id="imgPreview" alt="">
+            <iframe id="iframePreview"></iframe>
+        </div>
+    </div>
+    </div>
+    <script type="module" src="app.js"> </script>
+</body>
+
+</html>
