@@ -1,4 +1,3 @@
-mod utils;
 use base64::{engine::general_purpose, Engine};
 use clap::{Parser, Subcommand};
 use imageproc::image::ImageFormat;
@@ -133,29 +132,31 @@ fn main() {
 }
 
 fn handle_gen_command(gen_opt: &GenArg) {
+    let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+        size: gen_opt.common_arg.size,
+        text_top: gen_opt.top_text.clone(),
+        text_bottom: gen_opt.bottom_text.clone(),
+        top_space: gen_opt.common_arg.top_space,
+        bottom_space: gen_opt.common_arg.bottom_space,
+        top_text_pos: gen_opt.common_arg.top_text_pos.clone(),
+        bottom_text_pos: gen_opt.common_arg.bottom_text_pos.clone(),
+        font_path: gen_opt.common_arg.font_path.clone(),
+        font_size: gen_opt.common_arg.font_size,
+        no_reduce_text_size: gen_opt.common_arg.no_reduce_text_size,
+        add_text_line_space: gen_opt.common_arg.add_text_line_space,
+        error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
+    };
+
     match gen_opt.common_arg.format.as_str() {
-        "console" => utils::console::print_qr(&gen_opt.content),
+        "console" => qrgen::utils::console::print_qr(&gen_opt.content),
         "png" => {
             let _ = create_dir_all(&gen_opt.common_arg.outdir.to_string())
                 .expect("Cannot create output directory!");
 
             println!("\n\nGenerate Image...");
 
-            let result = utils::generate::generate_image(
-                gen_opt.content.clone(),
-                gen_opt.common_arg.size,
-                &gen_opt.top_text,
-                &gen_opt.bottom_text,
-                gen_opt.common_arg.top_space,
-                gen_opt.common_arg.bottom_space,
-                &gen_opt.common_arg.top_text_pos,
-                &gen_opt.common_arg.bottom_text_pos,
-                &gen_opt.common_arg.font_path,
-                gen_opt.common_arg.font_size,
-                gen_opt.common_arg.no_reduce_text_size,
-                gen_opt.common_arg.add_text_line_space,
-                &gen_opt.common_arg.error_correction_level,
-            );
+            let result =
+                qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
 
             match handler_result_generate_image(
                 result,
@@ -167,21 +168,8 @@ fn handle_gen_command(gen_opt: &GenArg) {
             }
         }
         "base64" => {
-            let result = utils::generate::generate_image(
-                gen_opt.content.clone(),
-                gen_opt.common_arg.size,
-                &gen_opt.top_text,
-                &gen_opt.bottom_text,
-                gen_opt.common_arg.top_space,
-                gen_opt.common_arg.bottom_space,
-                &gen_opt.common_arg.top_text_pos,
-                &gen_opt.common_arg.bottom_text_pos,
-                &gen_opt.common_arg.font_path,
-                gen_opt.common_arg.font_size,
-                gen_opt.common_arg.no_reduce_text_size,
-                gen_opt.common_arg.add_text_line_space,
-                &gen_opt.common_arg.error_correction_level,
-            );
+            let result =
+                qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
 
             match handler_result_generate_image(result, "".to_owned(), true) {
                 Ok(r) => println!("{}", r),
@@ -193,7 +181,8 @@ fn handle_gen_command(gen_opt: &GenArg) {
 }
 
 fn handle_from_command(from_opt: &FromArg) {
-    let list_data = utils::process_file::csv_to_vec(&from_opt.path).expect("Error processing file");
+    let list_data =
+        qrgen::utils::process_file::csv_to_vec(&from_opt.path).expect("Error processing file");
 
     println!("Generate Images...");
 
@@ -210,8 +199,8 @@ fn handle_from_command(from_opt: &FromArg) {
 
 fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
     for row in list_data {
-        let content = utils::template::from_vec(row.to_vec(), &from_opt.template_content);
-        utils::console::print_qr(&content)
+        let content = qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content);
+        qrgen::utils::console::print_qr(&content)
     }
     return;
 }
@@ -223,11 +212,14 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
     let result_generate_image: Vec<bool> = list_data
         .par_iter()
         .map(|row| {
-            let content = utils::template::from_vec(row.to_vec(), &from_opt.template_content);
-            let raw_filename = utils::template::from_vec(row.to_vec(), &from_opt.template_filename);
-            let text_top = utils::template::from_vec(row.to_vec(), &from_opt.template_text_top);
+            let content =
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content);
+            let raw_filename =
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_filename);
+            let text_top =
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_text_top);
             let text_bottom =
-                utils::template::from_vec(row.to_vec(), &from_opt.template_text_bottom);
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_text_bottom);
 
             // Save the image with a unique filename
             let filename = raw_filename.replace("/", "_");
@@ -243,21 +235,22 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
                 );
             }
 
-            let result = utils::generate::generate_image(
-                content.to_string(),
-                from_opt.common_arg.size,
-                &text_top,
-                &text_bottom,
-                from_opt.common_arg.top_space,
-                from_opt.common_arg.bottom_space,
-                &from_opt.common_arg.top_text_pos,
-                &from_opt.common_arg.bottom_text_pos,
-                &from_opt.common_arg.font_path,
-                from_opt.common_arg.font_size,
-                from_opt.common_arg.no_reduce_text_size,
-                from_opt.common_arg.add_text_line_space,
-                &from_opt.common_arg.error_correction_level,
-            );
+            let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+                size: from_opt.common_arg.size,
+                text_top: text_top,
+                text_bottom: text_bottom,
+                top_space: from_opt.common_arg.top_space,
+                bottom_space: from_opt.common_arg.bottom_space,
+                top_text_pos: from_opt.common_arg.top_text_pos.clone(),
+                bottom_text_pos: from_opt.common_arg.bottom_text_pos.clone(),
+                font_path: from_opt.common_arg.font_path.clone(),
+                font_size: from_opt.common_arg.font_size,
+                no_reduce_text_size: from_opt.common_arg.no_reduce_text_size,
+                add_text_line_space: from_opt.common_arg.add_text_line_space,
+                error_correction_level: from_opt.common_arg.error_correction_level.clone(),
+            };
+
+            let result = qrgen::utils::generate::generate_image(content.to_string(), gen_image_opt);
 
             match handler_result_generate_image(result, path_output_file, to_base64) {
                 Ok(r) => {
@@ -279,7 +272,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
 }
 
 fn handler_result_generate_image(
-    result: Result<utils::generate::ResultGenerateImage, String>,
+    result: Result<qrgen::utils::generate::ResultGenerateImage, String>,
     path: String,
     to_base64: bool,
 ) -> Result<String, String> {

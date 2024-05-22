@@ -109,23 +109,46 @@ fn prepare_text_draw(
     });
 }
 
+pub struct GenerateImageOptions {
+    pub size: u32,
+    pub text_top: String,
+    pub text_bottom: String,
+    pub top_space: usize,
+    pub bottom_space: usize,
+    pub top_text_pos: String,
+    pub bottom_text_pos: String,
+    pub font_path: Option<String>,
+    pub font_size: usize,
+    pub no_reduce_text_size: bool,
+    pub add_text_line_space: u32,
+    pub error_correction_level: String,
+}
+
+impl Default for GenerateImageOptions {
+    fn default() -> Self {
+        Self {
+            size: 1024,
+            text_top: "".to_owned(),
+            text_bottom: "".to_owned(),
+            top_space: 15,
+            bottom_space: 15,
+            top_text_pos: "".to_owned(),
+            bottom_text_pos: "".to_owned(),
+            font_path: None,
+            font_size: 10,
+            no_reduce_text_size: false,
+            add_text_line_space: 0,
+            error_correction_level: "m".to_owned(),
+        }
+    }
+}
+
 pub fn generate_image(
     content: String,
-    size: u32,
-    text_top: &String,
-    text_bottom: &String,
-    top_space: usize,
-    bottom_space: usize,
-    top_text_pos: &String,
-    bottom_text_pos: &String,
-    font_path: &Option<String>,
-    font_size: usize,
-    no_reduce_text_size: bool,
-    add_text_line_space: u32,
-    error_correction_level: &String,
+    opt: GenerateImageOptions,
 ) -> Result<ResultGenerateImage, String> {
     // set qr error correction level
-    let ecc = match error_correction_level.as_str() {
+    let ecc = match opt.error_correction_level.as_str() {
         "l" => QrCodeEcc::Low,
         "m" => QrCodeEcc::Medium,
         "q" => QrCodeEcc::Quartile,
@@ -134,19 +157,19 @@ pub fn generate_image(
     };
 
     // Generate a QR code and convert it to ImageBuffer
-    let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, size as usize)
+    let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, opt.size as usize)
         .expect("Failed to generate QR code");
 
     // Define the additional space to be added on top
-    let cal_top_space = if !text_top.is_empty() {
-        size * top_space as u32 / 100
+    let cal_top_space = if !opt.text_top.is_empty() {
+        opt.size * opt.top_space as u32 / 100
     } else {
         0
     };
 
     // Define the additional space to be added on bottom
-    let cal_bottom_space = if !text_bottom.is_empty() {
-        size * bottom_space as u32 / 100
+    let cal_bottom_space = if !opt.text_bottom.is_empty() {
+        opt.size * opt.bottom_space as u32 / 100
     } else {
         0
     };
@@ -174,12 +197,12 @@ pub fn generate_image(
     let mut reduce_top_text_size: Option<u32> = None;
     let mut reduce_bottom_text_size: Option<u32> = None;
 
-    if !text_top.is_empty() || !text_bottom.is_empty() {
+    if !opt.text_top.is_empty() || !opt.text_bottom.is_empty() {
         // Get font data
-        let font_data = if font_path.is_none() {
+        let font_data = if opt.font_path.is_none() {
             Vec::<u8>::from(FONT_DEFAULT)
         } else {
-            read(font_path.as_ref().unwrap()).expect("Error read font file")
+            read(opt.font_path.as_ref().unwrap()).expect("Error read font file")
         };
 
         let font = FontVec::try_from_vec(font_data).expect("Error constructing Font");
@@ -187,15 +210,15 @@ pub fn generate_image(
         let color = Rgb([0, 0, 0]);
 
         // Text Bottom
-        if !text_bottom.is_empty() {
+        if !opt.text_bottom.is_empty() {
             let text_bottom_draw_data = match prepare_text_draw(
-                text_bottom.to_string(),
-                size,
-                font_size as u32,
+                opt.text_bottom.to_string(),
+                opt.size,
+                opt.font_size as u32,
                 &font,
-                add_text_line_space,
+                opt.add_text_line_space,
                 cal_bottom_space as u32,
-                no_reduce_text_size,
+                opt.no_reduce_text_size,
             ) {
                 Ok(r) => r,
                 Err(e) => return Err(e),
@@ -211,21 +234,21 @@ pub fn generate_image(
                 cal_bottom_space,
                 color,
                 &font,
-                bottom_text_pos.to_string(),
+                opt.bottom_text_pos.to_string(),
                 "bottom".to_string(),
             )
         }
 
         // Text Top
-        if !text_top.is_empty() {
+        if !opt.text_top.is_empty() {
             let text_top_draw_data = prepare_text_draw(
-                text_top.to_string(),
-                size,
-                font_size as u32,
+                opt.text_top.to_string(),
+                opt.size,
+                opt.font_size as u32,
                 &font,
-                add_text_line_space,
+                opt.add_text_line_space,
                 cal_top_space as u32,
-                no_reduce_text_size,
+                opt.no_reduce_text_size,
             )
             .expect("Error: Prepare text draw (top)");
 
@@ -239,7 +262,7 @@ pub fn generate_image(
                 cal_top_space,
                 color,
                 &font,
-                top_text_pos.to_string(),
+                opt.top_text_pos.to_string(),
                 "top".to_string(),
             )
         }
