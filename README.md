@@ -1,6 +1,6 @@
 # QR Code Generator
 
-Tools for generate qrcode image from command line written in Rust.
+Generate QRCode image from command line and library, written in Rust.
 
 ## Features
 
