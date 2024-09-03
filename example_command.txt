@@ -1,0 +1,3 @@
+cargo run gen abc123 -f=png"
+
+cargo run from example_data.csv -f=png --bs=220 --ts=140 --rs=0 --fs=40 --fp="./fonts/noto-sans-thai-v25-thai-regular.ttf","./fonts/Monofett-Regular.ttf","./fonts/LibreBarcode39Text-Regular.ttf","./fonts/NotoColorEmoji.ttf" --trt="[{y:20,w:1000,h:140,a:1,p:1,i:[{s:70,t:'🌈'},{f:1,s:80,c:'C63658',t:'Hello '},{f:2,s:100,t:'*world*'}]},{x:40,y:1140,w:1000,i:[{t:'👤'},{t:'Name'}]},{y:1140,a:2,r:40,i:[{t:'{{0}}'}]},{x:40,y:1220,i:[{t:'✉️'},{t:'Email'}]},{y:1220,a:2,r:40,i:[{t:'{{1}}'}]},{a:1,p:2,b:20,i:[{t:'Row: {{ROW}}'}]}]"

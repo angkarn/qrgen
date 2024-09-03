@@ -10,12 +10,13 @@ description = "QR Code Generator Tools"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-imageproc = "0.24.0"
 qrcode-generator = "4.1.9"
-ab_glyph = "0.2.23"
 csv = "1.3.0"
 rayon = "1.10.0"
 base64 = "0.22.0"
+rust-text-render = { path = "../rust-text-render" }
+json5 = "0.4.1"
+
 
 [profile.release]
 panic = "abort"
