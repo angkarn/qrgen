@@ -1,7 +1,9 @@
 use qrcode_generator::QrCodeEcc;
 use rust_text_render::image::{DynamicImage, Rgba};
-use rust_text_render::{draw_text, Widget};
+use rust_text_render::{draw_text, Widgets};
 use rust_text_render::{fontdb, FontSystem, GenericImage, SwashCache};
+
+// static FONT_DEFAULT: &'static [u8] = include_bytes!("../../NotoSansThai-Light.ttf");
 
 pub struct ResultGenerateImage {
     pub image_buffer: DynamicImage,
@@ -16,10 +18,11 @@ pub struct GenerateImageOptions {
     pub top_space: u32,
     pub right_space: u32,
     pub bottom_space: u32,
-    pub template_text_render: Option<String>,
+    pub text_render_template: Option<String>,
     pub font_size: u32,
     pub reduce_font_size: u32,
-    pub font_db: fontdb::Database,
+    pub text_line_height: f32,
+    pub locale_and_db: (String, fontdb::Database),
 }
 
 pub fn generate_image(
@@ -68,25 +71,19 @@ pub fn generate_image(
         }
     }
 
-    if opt.template_text_render.is_none() {
-        return Ok(ResultGenerateImage {
-            image_buffer: new_image,
-            reduce_font_size: false,
-            draw_out_pixel: false,
-        });
-    }
-
     // Process draw text to image
-    let text = opt.template_text_render.clone().unwrap();
+    let text = opt.text_render_template.clone().unwrap();
 
-    let widgets = json5::from_str::<Vec<Widget>>(&text).unwrap();
+    let widgets = json5::from_str::<Vec<Widgets>>(&text).unwrap();
     // println!("deserialized = {:#?}", widgets);
 
     let mut swash_cache = SwashCache::new();
+
     let text_layout_width = new_image.width();
     let text_layout_height = new_image.height();
 
-    let mut font_system = FontSystem::new_with_locale_and_db("en-US".to_string(), opt.font_db);
+    let mut font_system =
+        FontSystem::new_with_locale_and_db(opt.locale_and_db.0, opt.locale_and_db.1);
 
     // for wait to set and return result
     let reduce_font_size = false;
