@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose, Engine};
 use clap::{Parser, Subcommand};
 use rayon::prelude::*;
-use rust_text_render::{
+use rust_text_draw::{
     fontdb::{self},
     image::ImageFormat,
 };

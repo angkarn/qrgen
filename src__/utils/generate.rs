@@ -1,7 +1,7 @@
 use qrcode_generator::QrCodeEcc;
-use rust_text_render::image::{DynamicImage, Rgba};
-use rust_text_render::{draw_text, Widgets};
-use rust_text_render::{fontdb, FontSystem, GenericImage, SwashCache};
+use rust_text_draw::image::{DynamicImage, Rgba};
+use rust_text_draw::{draw_text, Widgets};
+use rust_text_draw::{fontdb, FontSystem, GenericImage, SwashCache};
 
 // static FONT_DEFAULT: &'static [u8] = include_bytes!("../../NotoSansThai-Light.ttf");
 
