@@ -38,6 +38,10 @@ Commands:
   gen   Generate qrcode from content
   from  Generate qrcode from a file of list content (csv format)
   help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
 ### gen
@@ -53,17 +57,16 @@ Arguments:
   <CONTENT>  Content to generate qrcode
 
 Options:
-  -t, --top-text <TOP_TEXT>           Text on top of image [default: ]
-  -b, --bottom-text <BOTTOM_TEXT>     Text on bottom of image [default: ]
   -f, --format <FORMAT>               Format output (console|png|base64) [default: console]
-  -s, --size <SIZE>                   Size of image [default: 1024]
+  -s, --qr-size <QR_SIZE>             Size of qr [default: 1000]
   -o, --outdir <OUTDIR>               Output directory [default: output]
-      --ts <TOP_SPACE>                Size of top space (percent of qr size) [default: 15]
-      --bs <BOTTOM_SPACE>             Size of bottom space (percent of qr size) [default: 15]
-      --fp <FONT_PATH>                Path of font file
-      --fs <FONT_SIZE>                Font size (percentage) [default: 10]
-      --atls <ADD_TEXT_LINE_SPACE>    Add text line space (percentage) [default: 0]
-      --nrts                          Flag to ignore auto reduce text size
+      --ls <LEFT_SPACE>               Size of left space [default: 0]
+      --ts <TOP_SPACE>                Size of top space [default: 0]
+      --rs <RIGHT_SPACE>              Size of right space [default: 0]
+      --bs <BOTTOM_SPACE>             Size of bottom space [default: 0]
+  -r, --ttr <TEMPLATE_TEXT_RENDER>    Template of text render (json5)
+      --fp <FONT_PATH>                Paths of font file
+      --fs <FONT_SIZE>                Font size (percentage) [default: 50]
       --ecc <ERROR_CORRECTION_LEVEL>  The error correction level in a QR Code symbol. (l|m|q|h) [default: m]
   -h, --help                          Print help
 ```
@@ -81,23 +84,22 @@ Arguments:
   <PATH>  Path file of list content
 
 Options:
-  -t, --tc <TEMPLATE_CONTENT>         Template content [default: {{0}}]
-      --ttt <TEMPLATE_TEXT_TOP>       Template for text on top [default: ]
-      --ttb <TEMPLATE_TEXT_BOTTOM>    Template for text on bottom [default: ]
-      --tfn <TEMPLATE_FILENAME>       Template filename [default: {{0}}]
+  -c, --tc <TEMPLATE_CONTENT>         Template of qr content [default: {{1}}]
+  -n, --tfn <TEMPLATE_FILENAME>       Template filename [default: {{1}}]
   -f, --format <FORMAT>               Format output (console|png|base64) [default: console]
-  -s, --size <SIZE>                   Size of image [default: 1024]
+  -s, --qr-size <QR_SIZE>             Size of qr [default: 1000]
   -o, --outdir <OUTDIR>               Output directory [default: output]
-      --ts <TOP_SPACE>                Size of top space (percent of qr size) [default: 15]
-      --bs <BOTTOM_SPACE>             Size of bottom space (percent of qr size) [default: 15]
-      --fp <FONT_PATH>                Path of font file
-      --fs <FONT_SIZE>                Font size (percentage) [default: 10]
-      --atls <ADD_TEXT_LINE_SPACE>    Add text line space (percentage) [default: 0]
-      --nrts                          Flag to ignore auto reduce text size
+      --ls <LEFT_SPACE>               Size of left space [default: 0]
+      --ts <TOP_SPACE>                Size of top space [default: 0]
+      --rs <RIGHT_SPACE>              Size of right space [default: 0]
+      --bs <BOTTOM_SPACE>             Size of bottom space [default: 0]
+  -r, --ttr <TEMPLATE_TEXT_RENDER>    Template of text render (json5)
+      --fp <FONT_PATH>                Paths of font file
+      --fs <FONT_SIZE>                Font size (percentage) [default: 50]
       --ecc <ERROR_CORRECTION_LEVEL>  The error correction level in a QR Code symbol. (l|m|q|h) [default: m]
   -h, --help                          Print help
 
-TEMPLATE: Can be use {{INDEX_COLUMN}} to replace from data (Starting at 0). eg. `Hello {{1}}` is replace {{1}} to data of index 1 on row.
+Template can be use `{{Nunmber of column}}` to replace data of column. And use `{{ROW}}` to replace number of row.
 ```
 
 ## Example

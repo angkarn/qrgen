@@ -83,7 +83,7 @@ struct CommonArg {
 
 #[derive(Parser, Debug)]
 #[command(
-    after_help = "Template can be use `{{Nunmber of column}}` to replace data of column. And use `{{ROW}}` to replace number of row. "
+    after_help = "Template can be use `{{Number of column}}` to replace data of column. And use `{{ROW}}` to replace number of row. "
 )]
 struct FromArg {
     /// Path file of list content
@@ -128,7 +128,7 @@ fn main() {
 
 fn handle_gen_command(gen_opt: &GenArg) {
     // if gen_opt.common_arg.template_text_render {
-    let font_db = get_font_db(gen_opt.common_arg.font_path.clone().unwrap_or([].to_vec())); //.into_locale_and_db();
+    let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
         qr_size: gen_opt.common_arg.qr_size,
@@ -196,12 +196,14 @@ fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
     return;
 }
 
-fn get_font_db(fonts_path: Vec<String>) -> fontdb::Database {
+fn get_font_db(fonts_path: Option<Vec<String>>) -> fontdb::Database {
     let mut font_db = fontdb::Database::new();
 
-    for path in &fonts_path {
-        let font_data = read(path).expect(&format!("Error read font file: \"{}\"", path));
-        font_db.load_font_data(font_data);
+    if fonts_path.is_some() {
+        for path in &fonts_path.unwrap() {
+            let font_data = read(path).expect(&format!("Error read font file: \"{}\"", path));
+            font_db.load_font_data(font_data);
+        }
     }
 
     font_db.load_font_data(FONT_DEFAULT.to_vec());
@@ -212,7 +214,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
     create_dir_all(from_opt.common_arg.outdir.to_string())
         .expect("Cannot create output directory!");
 
-    let font_db = get_font_db(from_opt.common_arg.font_path.clone().unwrap()); //.into_locale_and_db();
+    let font_db = get_font_db(from_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     // Generate file name list
     let mut file_name_count_map: HashMap<String, u32> = HashMap::new();
