@@ -10,12 +10,12 @@ pub struct ResultGenerateImage {
 }
 
 pub struct GenerateImageOptions {
+    pub image_width: u32,
+    pub image_height: u32,
     pub qr_size: u32,
     pub error_correction_level: String,
-    pub left_space: u32,
-    pub top_space: u32,
-    pub right_space: u32,
-    pub bottom_space: u32,
+    pub pos_qr_x: u32,
+    pub pos_qr_y: u32,
     pub template_text_render: Option<String>,
     pub font_size: u32,
     pub reduce_font_size: u32,
@@ -40,10 +40,7 @@ pub fn generate_image(
         .expect("Failed to generate QR code");
 
     // Create a new image with additional space at the top
-    let mut new_image = DynamicImage::new_rgba8(
-        qr_code_buffer.width() + opt.left_space + opt.right_space,
-        qr_code_buffer.height() + opt.top_space + opt.bottom_space,
-    );
+    let mut new_image = DynamicImage::new_rgba8(opt.image_width, opt.image_height);
 
     // fill bg base image
     for y in 0..new_image.height() as u32 {
@@ -57,11 +54,11 @@ pub fn generate_image(
         for y in 0..qr_code_buffer.height() {
             let pixel_value = qr_code_buffer.get_pixel(x, y)[0];
             if pixel_value == 0 {
-                new_image.put_pixel(opt.left_space + x, opt.top_space + y, Rgba([0, 0, 0, 255]));
+                new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba([0, 0, 0, 255]));
             } else {
                 new_image.put_pixel(
-                    opt.left_space + x,
-                    opt.top_space + y,
+                    opt.pos_qr_x + x,
+                    opt.pos_qr_y + y,
                     Rgba([pixel_value, pixel_value, pixel_value, 255]),
                 );
             }

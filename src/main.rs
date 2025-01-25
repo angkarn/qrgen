@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose, Engine};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use rayon::prelude::*;
 use rust_text_draw::{
     fontdb::{self},
@@ -15,10 +15,14 @@ static FONT_DEFAULT: &'static [u8] = include_bytes!("../fonts/poppins-v21-latin-
 
 /// QR Code Generator Tools
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, disable_help_flag = true)]
 struct Args {
     #[clap(subcommand)]
     command: Command,
+
+    /// Print help
+    #[arg(long = "help", hide_short_help = true)] // Define only the `--help` flag
+    help: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -36,29 +40,29 @@ struct CommonArg {
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
+    /// Size of image width
+    #[clap(short = 'w', long = "image_width", default_value = "1000")]
+    image_width: u32,
+
+    /// Size of image height
+    #[clap(short = 'h', long = "image_height", default_value = "1000")]
+    image_height: u32,
+
     /// Size of qr
-    #[clap(short = 's', long, default_value = "1000")]
+    #[clap(short = 'q', long = "qr_size", default_value = "1000")]
     qr_size: u32,
 
     /// Output directory
     #[clap(short = 'o', long, default_value = "output")]
     outdir: String,
 
-    /// Size of left space
-    #[clap(long = "ls", default_value = "0")]
-    left_space: u32,
+    /// Start position qr x axis
+    #[clap(short = 'x', long = "pos_x", default_value = "0")]
+    pos_qr_x: u32,
 
-    /// Size of top space
-    #[clap(long = "ts", default_value = "0")]
-    top_space: u32,
-
-    /// Size of right space
-    #[clap(long = "rs", default_value = "0")]
-    right_space: u32,
-
-    /// Size of bottom space
-    #[clap(long = "bs", default_value = "0")]
-    bottom_space: u32,
+    /// Start position qr y axis
+    #[clap(short = 'y', long = "pos_y", default_value = "0")]
+    pos_qr_y: u32,
 
     /// Template of text render (json5)
     #[clap(short = 'r', long = "ttr")]
@@ -118,6 +122,13 @@ fn main() {
 
     // println!("{:?}", args);
 
+    if args.help {
+        let mut cmd = Args::command();
+        cmd.print_help().unwrap();
+        println!(); // Add a newline for proper formatting
+        return;
+    }
+
     match &args.command {
         Command::Gen(state) => handle_gen_command(state),
         Command::From(state) => handle_from_command(state),
@@ -131,12 +142,12 @@ fn handle_gen_command(gen_opt: &GenArg) {
     let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+        image_width: gen_opt.common_arg.image_width,
+        image_height: gen_opt.common_arg.image_height,
         qr_size: gen_opt.common_arg.qr_size,
+        pos_qr_x: gen_opt.common_arg.pos_qr_x,
+        pos_qr_y: gen_opt.common_arg.pos_qr_y,
         error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
-        left_space: gen_opt.common_arg.left_space,
-        top_space: gen_opt.common_arg.top_space,
-        right_space: gen_opt.common_arg.right_space,
-        bottom_space: gen_opt.common_arg.bottom_space,
         template_text_render: gen_opt.common_arg.template_text_render.clone(),
         font_size: gen_opt.common_arg.font_size,
         reduce_font_size: gen_opt.common_arg.reduce_font_size,
@@ -249,12 +260,12 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
                 };
 
             let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+                image_width: from_opt.common_arg.image_width,
+                image_height: from_opt.common_arg.image_height,
                 qr_size: from_opt.common_arg.qr_size,
+                pos_qr_x: from_opt.common_arg.pos_qr_x,
+                pos_qr_y: from_opt.common_arg.pos_qr_y,
                 error_correction_level: from_opt.common_arg.error_correction_level.clone(),
-                left_space: from_opt.common_arg.left_space,
-                top_space: from_opt.common_arg.top_space,
-                right_space: from_opt.common_arg.right_space,
-                bottom_space: from_opt.common_arg.bottom_space,
                 template_text_render: template_text_render,
                 font_size: from_opt.common_arg.font_size,
                 reduce_font_size: from_opt.common_arg.reduce_font_size,
