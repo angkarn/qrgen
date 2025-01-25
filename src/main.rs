@@ -49,7 +49,7 @@ struct CommonArg {
     image_height: u32,
 
     /// Size of qr
-    #[clap(short = 'q', long = "qr_size", default_value = "1000")]
+    #[clap(short = 's', long = "qr_size", default_value = "1000")]
     qr_size: u32,
 
     /// Output directory
