@@ -1,10 +1,9 @@
 [package]
 name = "qrgen"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 authors = ["Angkarn Pukawanach <angkarn.pk@gmail.com>"]
-license = "MIT"
-description = "QR Code Generator Tools"
+description = "QR Code Generator Tools and Draws"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
