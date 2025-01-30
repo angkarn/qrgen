@@ -40,17 +40,17 @@ struct CommonArg {
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
-    /// Size of image width
-    #[clap(short = 'w', long = "image_width", default_value = "1000")]
-    image_width: u32,
-
-    /// Size of image height
-    #[clap(short = 'h', long = "image_height", default_value = "1000")]
-    image_height: u32,
-
     /// Size of qr
     #[clap(short = 's', long = "qr_size", default_value = "1000")]
     qr_size: u32,
+
+    /// Size of image width (default value from qr size)
+    #[clap(short = 'w', long = "image_width")]
+    image_width: Option<u32>,
+
+    /// Size of image height (default value from qr size)
+    #[clap(short = 'h', long = "image_height")]
+    image_height: Option<u32>,
 
     /// Output directory
     #[clap(short = 'o', long, default_value = "output")]
@@ -142,8 +142,14 @@ fn handle_gen_command(gen_opt: &GenArg) {
     let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
-        image_width: gen_opt.common_arg.image_width,
-        image_height: gen_opt.common_arg.image_height,
+        image_width: gen_opt
+            .common_arg
+            .image_width
+            .unwrap_or(gen_opt.common_arg.qr_size),
+        image_height: gen_opt
+            .common_arg
+            .image_height
+            .unwrap_or(gen_opt.common_arg.qr_size),
         qr_size: gen_opt.common_arg.qr_size,
         pos_qr_x: gen_opt.common_arg.pos_qr_x,
         pos_qr_y: gen_opt.common_arg.pos_qr_y,
@@ -255,15 +261,20 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
             let content =
                 qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
 
-            let template_draw: Option<String> =
-                match &from_opt.common_arg.template_draw {
-                    Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
-                    None => None,
-                };
+            let template_draw: Option<String> = match &from_opt.common_arg.template_draw {
+                Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
+                None => None,
+            };
 
             let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
-                image_width: from_opt.common_arg.image_width,
-                image_height: from_opt.common_arg.image_height,
+                image_width: from_opt
+                    .common_arg
+                    .image_width
+                    .unwrap_or(from_opt.common_arg.qr_size),
+                image_height: from_opt
+                    .common_arg
+                    .image_height
+                    .unwrap_or(from_opt.common_arg.qr_size),
                 qr_size: from_opt.common_arg.qr_size,
                 pos_qr_x: from_opt.common_arg.pos_qr_x,
                 pos_qr_y: from_opt.common_arg.pos_qr_y,
