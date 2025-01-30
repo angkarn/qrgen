@@ -65,8 +65,8 @@ struct CommonArg {
     pos_qr_y: u32,
 
     /// Template of text render (json5)
-    #[clap(short = 'r', long = "ttr")]
-    template_text_render: Option<String>,
+    #[clap(short = 'd', long = "td")]
+    template_draw: Option<String>,
 
     /// Paths of font file
     #[clap(long = "fp", value_delimiter = ',')]
@@ -138,7 +138,7 @@ fn main() {
 }
 
 fn handle_gen_command(gen_opt: &GenArg) {
-    // if gen_opt.common_arg.template_text_render {
+    // if gen_opt.common_arg.template_draw {
     let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
@@ -148,7 +148,7 @@ fn handle_gen_command(gen_opt: &GenArg) {
         pos_qr_x: gen_opt.common_arg.pos_qr_x,
         pos_qr_y: gen_opt.common_arg.pos_qr_y,
         error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
-        template_text_render: gen_opt.common_arg.template_text_render.clone(),
+        template_draw: gen_opt.common_arg.template_draw.clone(),
         font_size: gen_opt.common_arg.font_size,
         reduce_font_size: gen_opt.common_arg.reduce_font_size,
         font_db,
@@ -210,6 +210,9 @@ fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
 fn get_font_db(fonts_path: Option<Vec<String>>) -> fontdb::Database {
     let mut font_db = fontdb::Database::new();
 
+    // load default font file
+    font_db.load_font_data(FONT_DEFAULT.to_vec());
+
     if fonts_path.is_some() {
         for path in &fonts_path.unwrap() {
             let font_data = read(path).expect(&format!("Error read font file: \"{}\"", path));
@@ -217,7 +220,6 @@ fn get_font_db(fonts_path: Option<Vec<String>>) -> fontdb::Database {
         }
     }
 
-    font_db.load_font_data(FONT_DEFAULT.to_vec());
     font_db
 }
 
@@ -253,8 +255,8 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
             let content =
                 qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
 
-            let template_text_render: Option<String> =
-                match &from_opt.common_arg.template_text_render {
+            let template_draw: Option<String> =
+                match &from_opt.common_arg.template_draw {
                     Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
                     None => None,
                 };
@@ -266,7 +268,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
                 pos_qr_x: from_opt.common_arg.pos_qr_x,
                 pos_qr_y: from_opt.common_arg.pos_qr_y,
                 error_correction_level: from_opt.common_arg.error_correction_level.clone(),
-                template_text_render: template_text_render,
+                template_draw: template_draw,
                 font_size: from_opt.common_arg.font_size,
                 reduce_font_size: from_opt.common_arg.reduce_font_size,
                 font_db: font_db.clone(),

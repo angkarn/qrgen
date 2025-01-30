@@ -16,7 +16,7 @@ pub struct GenerateImageOptions {
     pub error_correction_level: String,
     pub pos_qr_x: u32,
     pub pos_qr_y: u32,
-    pub template_text_render: Option<String>,
+    pub template_draw: Option<String>,
     pub font_size: u32,
     pub reduce_font_size: u32,
     pub font_db: fontdb::Database,
@@ -26,19 +26,6 @@ pub fn generate_image(
     content: String,
     opt: GenerateImageOptions,
 ) -> Result<ResultGenerateImage, String> {
-    // set qr error correction level
-    let ecc = match opt.error_correction_level.as_str() {
-        "l" => QrCodeEcc::Low,
-        "m" => QrCodeEcc::Medium,
-        "q" => QrCodeEcc::Quartile,
-        "h" => QrCodeEcc::High,
-        _ => QrCodeEcc::Medium,
-    };
-
-    // Generate a QR code and convert it to ImageBuffer
-    let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, opt.qr_size as usize)
-        .expect("Failed to generate QR code");
-
     // Create a new image with additional space at the top
     let mut new_image = DynamicImage::new_rgba8(opt.image_width, opt.image_height);
 
@@ -49,23 +36,38 @@ pub fn generate_image(
         }
     }
 
-    // Copy the QR code image onto the new image
-    for x in 0..qr_code_buffer.width() {
-        for y in 0..qr_code_buffer.height() {
-            let pixel_value = qr_code_buffer.get_pixel(x, y)[0];
-            if pixel_value == 0 {
-                new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba([0, 0, 0, 255]));
-            } else {
-                new_image.put_pixel(
-                    opt.pos_qr_x + x,
-                    opt.pos_qr_y + y,
-                    Rgba([pixel_value, pixel_value, pixel_value, 255]),
-                );
+    if opt.qr_size != 0 {
+        // set qr error correction level
+        let ecc = match opt.error_correction_level.as_str() {
+            "l" => QrCodeEcc::Low,
+            "m" => QrCodeEcc::Medium,
+            "q" => QrCodeEcc::Quartile,
+            "h" => QrCodeEcc::High,
+            _ => QrCodeEcc::Medium,
+        };
+
+        // Generate a QR code and convert it to ImageBuffer
+        let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, opt.qr_size as usize)
+            .expect("Failed to generate QR code");
+
+        // Copy the QR code image onto the new image
+        for x in 0..qr_code_buffer.width() {
+            for y in 0..qr_code_buffer.height() {
+                let pixel_value = qr_code_buffer.get_pixel(x, y)[0];
+                if pixel_value == 0 {
+                    new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba([0, 0, 0, 255]));
+                } else {
+                    new_image.put_pixel(
+                        opt.pos_qr_x + x,
+                        opt.pos_qr_y + y,
+                        Rgba([pixel_value, pixel_value, pixel_value, 255]),
+                    );
+                }
             }
         }
     }
 
-    if opt.template_text_render.is_none() {
+    if opt.template_draw.is_none() {
         return Ok(ResultGenerateImage {
             image_buffer: new_image,
             reduce_font_size: false,
@@ -74,7 +76,7 @@ pub fn generate_image(
     }
 
     // Process draw text to image
-    let text = opt.template_text_render.clone().unwrap();
+    let text = opt.template_draw.clone().unwrap();
 
     let widgets = json5::from_str::<Vec<Widget>>(&text).unwrap();
     // println!("deserialized = {:#?}", widgets);
