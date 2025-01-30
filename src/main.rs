@@ -1,18 +1,28 @@
 use base64::{engine::general_purpose, Engine};
-use clap::{Parser, Subcommand};
-use imageproc::image::ImageFormat;
+use clap::{CommandFactory, Parser, Subcommand};
 use rayon::prelude::*;
+use rust_text_draw::{
+    fontdb::{self},
+    image::ImageFormat,
+};
 use std::{
-    fs::{create_dir_all, metadata},
+    collections::HashMap,
+    fs::{create_dir_all, read},
     io::Cursor,
 };
 
+static FONT_DEFAULT: &'static [u8] = include_bytes!("../fonts/poppins-v21-latin-regular.ttf");
+
 /// QR Code Generator Tools
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, disable_help_flag = true)]
 struct Args {
     #[clap(subcommand)]
     command: Command,
+
+    /// Print help
+    #[arg(long = "help", hide_short_help = true)] // Define only the `--help` flag
+    help: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -30,45 +40,45 @@ struct CommonArg {
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
-    /// Size of image
-    #[clap(short = 's', long, default_value = "1024")]
-    size: u32,
+    /// Size of qr
+    #[clap(short = 's', long = "qr_size", default_value = "1000")]
+    qr_size: u32,
+
+    /// Size of image width (default value from qr size)
+    #[clap(short = 'w', long = "image_width")]
+    image_width: Option<u32>,
+
+    /// Size of image height (default value from qr size)
+    #[clap(short = 'h', long = "image_height")]
+    image_height: Option<u32>,
 
     /// Output directory
     #[clap(short = 'o', long, default_value = "output")]
     outdir: String,
 
-    /// Size of top space (percent of qr size)
-    #[clap(long = "ts", default_value = "15")]
-    top_space: usize,
+    /// Start position qr x axis
+    #[clap(short = 'x', long = "pos_x", default_value = "0")]
+    pos_qr_x: u32,
 
-    /// Size of bottom space (percent of qr size)
-    #[clap(long = "bs", default_value = "15")]
-    bottom_space: usize,
+    /// Start position qr y axis
+    #[clap(short = 'y', long = "pos_y", default_value = "0")]
+    pos_qr_y: u32,
 
-    /// Positional of text top
-    #[clap(long = "ttp", default_value = "center", hide = true)]
-    top_text_pos: String,
+    /// Template of text render (json5)
+    #[clap(short = 'd', long = "td")]
+    template_draw: Option<String>,
 
-    /// Positional of text bottom
-    #[clap(long = "btp", default_value = "center", hide = true)]
-    bottom_text_pos: String,
-
-    /// Path of font file
-    #[clap(long = "fp")]
-    font_path: Option<String>,
+    /// Paths of font file
+    #[clap(long = "fp", value_delimiter = ',')]
+    font_path: Option<Vec<String>>,
 
     /// Font size (percentage)
-    #[clap(long = "fs", default_value = "10")]
-    font_size: usize,
+    #[clap(long = "fs", default_value = "50")]
+    font_size: u32,
 
-    /// Add text line space (percentage)
-    #[clap(long = "atls", default_value = "0")]
-    add_text_line_space: u32,
-
-    /// Flag to ignore auto reduce text size
-    #[clap(long = "nrts")]
-    no_reduce_text_size: bool,
+    /// minimum font size of reduce. 0 = no reduce (replace on template)
+    #[clap(long = "rfs", default_value = "0", hide = true)]
+    reduce_font_size: u32,
 
     /// The error correction level in a QR Code symbol. (l|m|q|h)
     #[clap(long = "ecc", default_value = "m")]
@@ -77,26 +87,18 @@ struct CommonArg {
 
 #[derive(Parser, Debug)]
 #[command(
-    after_help = "TEMPLATE: Can be use {{INDEX_COLUMN}} to replace from data (Starting at 0). eg. `Hello {{1}}` is replace {{1}} to data of index 1 on row."
+    after_help = "Template can be use `{{Number of column}}` to replace data of column. And use `{{ROW}}` to replace number of row. "
 )]
 struct FromArg {
     /// Path file of list content
     path: String,
 
-    /// Template content
-    #[clap(short = 't', long = "tc", default_value = "{{0}}")]
+    /// Template of qr content
+    #[clap(short = 'c', long = "tc", default_value = "{{1}}")]
     template_content: String,
 
-    /// Template for text on top.
-    #[clap(long = "ttt", default_value = "")]
-    template_text_top: String,
-
-    /// Template for text on bottom.
-    #[clap(long = "ttb", default_value = "")]
-    template_text_bottom: String,
-
     /// Template filename.
-    #[clap(long = "tfn", default_value = "{{0}}")]
+    #[clap(short = 'n', long = "tfn", default_value = "{{1}}")]
     template_filename: String,
 
     #[command(flatten)]
@@ -108,43 +110,54 @@ struct GenArg {
     /// Content to generate qrcode
     content: String,
 
-    /// Text on top of image
-    #[clap(short = 't', long, default_value = "")]
-    top_text: String,
-
-    /// Text on bottom of image
-    #[clap(short = 'b', long, default_value = "")]
-    bottom_text: String,
-
     #[command(flatten)]
     common_arg: CommonArg,
 }
 
 fn main() {
+    use std::time::Instant;
+    let now = Instant::now();
+
     let args = Args::parse();
 
     // println!("{:?}", args);
+
+    if args.help {
+        let mut cmd = Args::command();
+        cmd.print_help().unwrap();
+        println!(); // Add a newline for proper formatting
+        return;
+    }
 
     match &args.command {
         Command::Gen(state) => handle_gen_command(state),
         Command::From(state) => handle_from_command(state),
     }
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
 }
 
 fn handle_gen_command(gen_opt: &GenArg) {
+    // if gen_opt.common_arg.template_draw {
+    let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
+
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
-        size: gen_opt.common_arg.size,
-        text_top: gen_opt.top_text.clone(),
-        text_bottom: gen_opt.bottom_text.clone(),
-        top_space: gen_opt.common_arg.top_space,
-        bottom_space: gen_opt.common_arg.bottom_space,
-        top_text_pos: gen_opt.common_arg.top_text_pos.clone(),
-        bottom_text_pos: gen_opt.common_arg.bottom_text_pos.clone(),
-        font_path: gen_opt.common_arg.font_path.clone(),
-        font_size: gen_opt.common_arg.font_size,
-        no_reduce_text_size: gen_opt.common_arg.no_reduce_text_size,
-        add_text_line_space: gen_opt.common_arg.add_text_line_space,
+        image_width: gen_opt
+            .common_arg
+            .image_width
+            .unwrap_or(gen_opt.common_arg.qr_size),
+        image_height: gen_opt
+            .common_arg
+            .image_height
+            .unwrap_or(gen_opt.common_arg.qr_size),
+        qr_size: gen_opt.common_arg.qr_size,
+        pos_qr_x: gen_opt.common_arg.pos_qr_x,
+        pos_qr_y: gen_opt.common_arg.pos_qr_y,
         error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
+        template_draw: gen_opt.common_arg.template_draw.clone(),
+        font_size: gen_opt.common_arg.font_size,
+        reduce_font_size: gen_opt.common_arg.reduce_font_size,
+        font_db,
     };
 
     match gen_opt.common_arg.format.as_str() {
@@ -153,28 +166,23 @@ fn handle_gen_command(gen_opt: &GenArg) {
             let _ = create_dir_all(&gen_opt.common_arg.outdir.to_string())
                 .expect("Cannot create output directory!");
 
-            println!("\n\nGenerate Image...");
+            println!("Generate Image...");
 
             let result =
                 qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
 
-            match handler_result_generate_image(
-                result,
+            handler_result_generate_image(
+                1,
+                &result,
                 format!("{}/{}.png", gen_opt.common_arg.outdir, "qr"),
                 false,
-            ) {
-                Ok(r) => println!("{}", r),
-                Err(e) => println!("{}", e),
-            }
+            );
         }
         "base64" => {
             let result =
                 qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
 
-            match handler_result_generate_image(result, "".to_owned(), true) {
-                Ok(r) => println!("{}", r),
-                Err(e) => println!("{}", e),
-            }
+            handler_result_generate_image(1, &result, "".to_owned(), true);
         }
         _ => {}
     }
@@ -188,7 +196,6 @@ fn handle_from_command(from_opt: &FromArg) {
 
     match from_opt.common_arg.format.as_str() {
         "console" => generate_list_console(list_data, from_opt),
-
         "png" => generate_list_image(list_data, from_opt, false),
         "base64" => generate_list_image(list_data, from_opt, true),
         _ => {
@@ -198,70 +205,95 @@ fn handle_from_command(from_opt: &FromArg) {
 }
 
 fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
-    for row in list_data {
-        let content = qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content);
+    for (index, row) in list_data.iter().enumerate() {
+        let content =
+            qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
         qrgen::utils::console::print_qr(&content)
     }
     return;
 }
 
+fn get_font_db(fonts_path: Option<Vec<String>>) -> fontdb::Database {
+    let mut font_db = fontdb::Database::new();
+
+    // load default font file
+    font_db.load_font_data(FONT_DEFAULT.to_vec());
+
+    if fonts_path.is_some() {
+        for path in &fonts_path.unwrap() {
+            let font_data = read(path).expect(&format!("Error read font file: \"{}\"", path));
+            font_db.load_font_data(font_data);
+        }
+    }
+
+    font_db
+}
+
 fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base64: bool) {
-    let _ = create_dir_all(from_opt.common_arg.outdir.to_string())
+    create_dir_all(from_opt.common_arg.outdir.to_string())
         .expect("Cannot create output directory!");
 
+    let font_db = get_font_db(from_opt.common_arg.font_path.clone()); //.into_locale_and_db();
+
+    // Generate file name list
+    let mut file_name_count_map: HashMap<String, u32> = HashMap::new();
+    let list_data_file_name: Vec<String> = list_data
+        .iter()
+        .enumerate()
+        .map(|(index, row)| {
+            let raw_filename =
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_filename, index);
+            let mut filename = raw_filename.replace("/", "_");
+            let number_dup = file_name_count_map.get(&filename).unwrap_or(&0).clone();
+            file_name_count_map.insert(filename.clone(), number_dup + 1);
+            if number_dup > 0 {
+                filename = format!("{}_{}", filename, number_dup + 1);
+            }
+            format!("{}/{}.png", &from_opt.common_arg.outdir, filename)
+        })
+        .collect();
+
+    // Process generate qr image
     let result_generate_image: Vec<bool> = list_data
         .par_iter()
-        .map(|row| {
+        .enumerate()
+        .map(|(index, row)| -> bool {
             let content =
-                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content);
-            let raw_filename =
-                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_filename);
-            let text_top =
-                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_text_top);
-            let text_bottom =
-                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_text_bottom);
+                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
 
-            // Save the image with a unique filename
-            let filename = raw_filename.replace("/", "_");
-            let mut path_output_file: String =
-                format!("{}/{}.png", from_opt.common_arg.outdir, filename);
-
-            let mut counter = 0;
-            while metadata(&path_output_file).is_ok() {
-                counter += 1;
-                path_output_file = format!(
-                    "{}/{}_{}.png",
-                    from_opt.common_arg.outdir, filename, counter
-                );
-            }
-
-            let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
-                size: from_opt.common_arg.size,
-                text_top: text_top,
-                text_bottom: text_bottom,
-                top_space: from_opt.common_arg.top_space,
-                bottom_space: from_opt.common_arg.bottom_space,
-                top_text_pos: from_opt.common_arg.top_text_pos.clone(),
-                bottom_text_pos: from_opt.common_arg.bottom_text_pos.clone(),
-                font_path: from_opt.common_arg.font_path.clone(),
-                font_size: from_opt.common_arg.font_size,
-                no_reduce_text_size: from_opt.common_arg.no_reduce_text_size,
-                add_text_line_space: from_opt.common_arg.add_text_line_space,
-                error_correction_level: from_opt.common_arg.error_correction_level.clone(),
+            let template_draw: Option<String> = match &from_opt.common_arg.template_draw {
+                Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
+                None => None,
             };
 
-            let result = qrgen::utils::generate::generate_image(content.to_string(), gen_image_opt);
+            let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+                image_width: from_opt
+                    .common_arg
+                    .image_width
+                    .unwrap_or(from_opt.common_arg.qr_size),
+                image_height: from_opt
+                    .common_arg
+                    .image_height
+                    .unwrap_or(from_opt.common_arg.qr_size),
+                qr_size: from_opt.common_arg.qr_size,
+                pos_qr_x: from_opt.common_arg.pos_qr_x,
+                pos_qr_y: from_opt.common_arg.pos_qr_y,
+                error_correction_level: from_opt.common_arg.error_correction_level.clone(),
+                template_draw: template_draw,
+                font_size: from_opt.common_arg.font_size,
+                reduce_font_size: from_opt.common_arg.reduce_font_size,
+                font_db: font_db.clone(),
+            };
 
-            match handler_result_generate_image(result, path_output_file, to_base64) {
-                Ok(r) => {
-                    println!("{}", r);
-                    true
-                }
-                Err(e) => {
-                    println!("{}", e);
-                    false
-                }
-            }
+            let generate_image_result =
+                qrgen::utils::generate::generate_image(content.to_string(), gen_image_opt);
+
+            handler_result_generate_image(
+                index + 1,
+                &generate_image_result,
+                list_data_file_name.get(index).unwrap().to_string(),
+                to_base64,
+            )
         })
         .collect();
 
@@ -272,28 +304,25 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
 }
 
 fn handler_result_generate_image(
-    result: Result<qrgen::utils::generate::ResultGenerateImage, String>,
+    row_number: usize,
+    result: &Result<qrgen::utils::generate::ResultGenerateImage, String>,
     path: String,
     to_base64: bool,
-) -> Result<String, String> {
+) -> bool {
     match result {
+        Err(e) => {
+            println!("Error: row: {} > {:#?}", row_number, e);
+            false
+        }
         Ok(r) => {
-            // Show messsage when the title size was reduced
-            if r.reduce_top_text_size.is_some() {
-                println!(
-                    "Info: Reduce font size of top: {}% > {}",
-                    r.reduce_top_text_size.unwrap(),
-                    path
-                );
+            // Show messsage when font size was reduced
+            if r.reduce_font_size {
+                println!("Info: Reduce font size of: {}", path);
             }
 
-            // Show messsage when the title size was reduced
-            if r.reduce_bottom_text_size.is_some() {
-                println!(
-                    "Info: Reduce font size of bottom: {}% > {}",
-                    r.reduce_bottom_text_size.unwrap(),
-                    path
-                );
+            // Show messsage when some draw out pixel
+            if r.draw_out_pixel {
+                println!("Info: some draw of pixel: {}", path);
             }
 
             if to_base64 {
@@ -303,16 +332,25 @@ fn handler_result_generate_image(
                     .expect("Couldn't write image to bytes.");
 
                 let b64 = general_purpose::STANDARD.encode(bytes);
-                Ok(format!("{}", &b64))
+
+                println!("result_base64:{}:{}", path, &b64);
+                true
             } else {
-                let save_image = r.image_buffer.into_luma8().save(&path);
+                // luma8
+                // let save_image = r.image_buffer.into_luma8().save(&path);
+                let save_image = r.image_buffer.save(&path);
 
                 match save_image {
-                    Ok(_) => Ok(format!("Created: {}", &path)),
-                    Err(e) => Err(e.to_string()),
+                    Ok(_) => {
+                        println!("Created: {:?}", &path);
+                        true
+                    }
+                    Err(e) => {
+                        println!("Error: {} > {}", e, path);
+                        false
+                    }
                 }
             }
         }
-        Err(e) => Err(format!("Error: {} > {}", e, path)),
     }
 }

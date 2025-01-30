@@ -9,17 +9,18 @@ description = "QR Code Generator Tools"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
-imageproc = "0.24.0"
+clap = { version = "4.5.27", features = ["derive"] }
 qrcode-generator = "4.1.9"
-ab_glyph = "0.2.23"
 csv = "1.3.0"
 rayon = "1.10.0"
 base64 = "0.22.0"
+rust-text-draw = { path = "../rust-text-draw" }
+json5 = "0.4.1"
+
 
 [profile.release]
 panic = "abort"
-opt-level = 'z'     # Optimize for size
+opt-level = 3
 lto = true
 codegen-units = 1
 strip = "debuginfo"

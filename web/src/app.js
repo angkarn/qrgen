@@ -31,6 +31,8 @@ function ael(el, event, fn, options = false) {
 
 let guiInputMode = "gen";
 
+let guiFonts = [];
+
 function generateGuiArg() {
   let args = ["qrgen"];
 
@@ -43,51 +45,45 @@ function generateGuiArg() {
       "-o",
       "gui_output"
     );
-    if ($("#topTextInput").value) {
-      args.push("-t", `"${$("#topTextInput").value}"`);
-    }
-    if ($("#bottomTextInput").value) {
-      args.push("-b", `"${$("#bottomTextInput").value}"`);
-    }
-    if ($("#fontSizeInput").value) {
-      args.push("--fs", `"${$("#fontSizeInput").value}"`);
-    }
-    if ($("#guiFontFile").value) {
-      args.push("--fp", "gui_font.ttf");
-    }
-    if ($("#imageSizeInput").value) {
-      args.push("-s", $("#imageSizeInput").value);
-    }
-    return args;
   }
 
   if (guiInputMode == "from") {
     args.push("from", `gui_content.csv`, "-f", "png", "-o", "gui_output");
 
     if ($("#contentTemplateInput").value) {
-      args.push("--tc", `"${$("#contentTemplateInput").value}"`);
-    }
-    if ($("#topTextTemplateInput").value) {
-      args.push("--ttt", `"${$("#topTextTemplateInput").value}"`);
-    }
-    if ($("#bottomTextTemplateInput").value) {
-      args.push("--ttb", `"${$("#bottomTextTemplateInput").value}"`);
+      args.push("-c", `"${$("#contentTemplateInput").value}"`);
     }
     if ($("#fileNameTemplateInput").value) {
-      args.push("--tfn", `"${$("#fileNameTemplateInput").value}"`);
+      args.push("-n", `"${$("#fileNameTemplateInput").value}"`);
     }
-    if ($("#guiFontFile").value) {
-      args.push("--fp", "gui_font.ttf");
-    }
-    if ($("#fontSizeInput").value) {
-      args.push("--fs", `"${$("#fontSizeInput").value}"`);
-    }
-    if ($("#imageSizeInput").value) {
-      args.push("-s", $("#imageSizeInput").value);
-    }
-
-    return args;
   }
+
+  if ($("#drawTemplateInput").value) {
+    args.push("-d", `"${$("#drawTemplateInput").value}"`);
+  }
+  if ($("#fontSizeInput").value) {
+    args.push("--fs", `"${$("#fontSizeInput").value}"`);
+  }
+  if ($("#guiFontFile").value) {
+    args.push("--fp=" + guiFonts.map((v) => `${v}`).join(","));
+  }
+  if ($("#qrSizeInput").value) {
+    args.push("-s", $("#qrSizeInput").value);
+  }
+  if ($("#qrXInput").value) {
+    args.push("-x", $("#qrXInput").value);
+  }
+  if ($("#qrYInput").value) {
+    args.push("-y", $("#qrYInput").value);
+  }
+  if ($("#imageWidthInput").value) {
+    args.push("-w", $("#imageWidthInput").value);
+  }
+  if ($("#imageHeightInput").value) {
+    args.push("-h", $("#imageHeightInput").value);
+  }
+
+  return args;
 }
 
 const guiSection = $("#guiSection");
@@ -152,9 +148,34 @@ ael(
   $("#guiFontFile"),
   "change",
   async (e) => {
-    const readResult = await readFileToUint8Array(e.target.files[0]);
-    importRootFiles.set("gui_font.ttf", { data: readResult[1] });
+    if (e.target.files.length == 0) return;
+    console.log(e.target.files)
+    let fonts = new Map();
+    await Promise.all(
+      Array.from(e.target.files).map(async (file) => {
+        const readResult = await readFileToUint8Array(file);
+        fonts.set(readResult[0], { data: readResult[1] });
+      })
+    );
+
+    importRootFiles.set("fonts", {
+      contents: fonts,
+    });
     reloadDir(importRootFiles);
+
+    // generate list to gui
+    let itemsElm = "";
+    guiFonts = [];
+
+    [...e.target.files].forEach((key, index) => {
+      guiFonts.push("./fonts/" + key.name);
+      itemsElm += `<div id="fontItem_${
+        index + 1
+      }" style="display: flex;gap: 4px;"><div>${index + 1}.</div>
+        <div>${key.name}</div></div>`;
+    });
+
+    listFontsElm.innerHTML = itemsElm;
   },
   false
 );
@@ -308,6 +329,13 @@ document.addEventListener("click", (e) => {
 });
 
 function fixQuoteArgs(args) {
+
+  // args = args.map((e) => {
+  //   const fl = e.replace(/^(.).*(.)$/, "$1$2");
+  //   if (fl == `""` || fl == `''`) return e.slice(1, -1);
+  //   return e;
+  // });
+
   // fix quote arg
   return args.map((e) => {
     const fl = e.replace(/^(.).*(.)$/, "$1$2");
