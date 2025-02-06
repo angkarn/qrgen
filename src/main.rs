@@ -40,6 +40,22 @@ struct CommonArg {
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
+    /// Path image file for set base image. It will ignore config image width, height (also work with data template)
+    #[clap(short = 'b', long = "base_image")]
+    base_image: Option<String>,
+
+    /// Color of QR (1 like black)
+    #[clap(short = '1', long = "qr_color_1", default_value = "000000ff")]
+    qr_color_1: String,
+
+    /// Color of QR (0 like white)
+    #[clap(short = '0', long = "qr_color_0", default_value = "ffffffff")]
+    qr_color_0: String,
+
+    /// fill background color
+    #[clap(long = "fill", default_value = "ffffffff")]
+    fill_color: String,
+
     /// Size of image width (pixel)
     #[clap(short = 'w', long = "image_width", default_value = "1000")]
     image_width: u32,
@@ -60,15 +76,15 @@ struct CommonArg {
     #[clap(short = 'y', long = "pos_y", default_value = "0")]
     pos_qr_y: u32,
 
-    /// Template of text render (json5)
+    /// Template of draw (json5)
     #[clap(short = 'd', long = "td")]
     template_draw: Option<String>,
 
-    /// Paths of font file
+    /// Paths of font files
     #[clap(long = "fp", value_delimiter = ',')]
     font_path: Option<Vec<String>>,
 
-    /// Font size (percentage of image width)
+    /// Default Font size (percentage of image width)
     #[clap(long = "fs", default_value = "3")]
     font_size: f32,
 
@@ -142,6 +158,12 @@ fn handle_gen_command(gen_opt: &GenArg) {
     let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+        qr_color: (
+            gen_opt.common_arg.qr_color_0.clone(),
+            gen_opt.common_arg.qr_color_1.clone(),
+        ),
+        base_image: gen_opt.common_arg.base_image.clone(),
+        fill_color: gen_opt.common_arg.fill_color.clone(),
         image_width: gen_opt.common_arg.image_width,
         image_height: gen_opt
             .common_arg
@@ -266,7 +288,18 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
                 None => None,
             };
 
+            let base_image = match &from_opt.common_arg.base_image {
+                Some(v) => Some(qrgen::utils::template::from_vec(row.to_vec(), v, index)),
+                None => None,
+            };
+
             let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
+                qr_color: (
+                    from_opt.common_arg.qr_color_0.clone(),
+                    from_opt.common_arg.qr_color_1.clone(),
+                ),
+                base_image: base_image,
+                fill_color: from_opt.common_arg.fill_color.clone(),
                 image_width: from_opt.common_arg.image_width,
                 image_height: from_opt
                     .common_arg
