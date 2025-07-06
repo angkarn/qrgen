@@ -190,10 +190,6 @@ qrgen from "example/set_base_image/from/data.csv" -b="example/set_base_image/fro
 
 ---
 
-#### WASI
-
-[Demo](https://qrgen-browser-demo.pages.dev) uses wasm file from build target to WebAssembly `wasm32-wasi`, By running on client browser. [project link](https://github.com/angkarn/qrgen-browser-demo)
-
 ## Build
 
 This project uses dependency from [rust-text-draw](https://github.com/angkarn/rust-text-draw). Please clone this repo before.
