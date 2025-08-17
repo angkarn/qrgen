@@ -1,0 +1,53 @@
+{
+  command: "gen",
+  content: "travel is my therapy!",
+  common_arg: {
+    format: "png",
+    base_image: "example/base_image.jpg",
+    qr_color_1: "00000080",
+    qr_color_0: "ffffff4d",
+    qr_size: 140,
+    pos_qr_x: 435,
+    pos_qr_y: 20,
+    template_draw: [
+      {
+        x: 9,
+        y: 35,
+        f: 1,
+        fs: 7,
+        c: 'ffffff',
+        ts: [
+          {
+            t: 'Travel'
+          }
+        ]
+      },
+      {
+        x: 15,
+        y: 50,
+        fs: 3,
+        c: 'ffffff',
+        ts: [
+          {
+            t: 'is my'
+          }
+        ]
+      },
+      {
+        x: 4,
+        y: 53.1,
+        f: 1,
+        fs: 7,
+        c: 'ffffff',
+        ts: [
+          {
+            t: 'Therapy!'
+          }
+        ]
+      }
+    ],
+    font_path: [
+      "fonts/knewave-v14-latin-regular.ttf"
+    ],
+  }
+}

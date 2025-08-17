@@ -4,91 +4,103 @@ use rayon::prelude::*;
 use rust_text_draw::{
     fontdb::{self},
     image::ImageFormat,
+    Widget,
 };
+use serde_json::{from_value, Value};
 use std::{
     collections::HashMap,
     fs::{create_dir_all, read},
     io::Cursor,
+    path::Path,
 };
 
 static FONT_DEFAULT: &'static [u8] = include_bytes!("../fonts/poppins-v21-latin-regular.ttf");
 
-/// QR Code Generator Tools
-#[derive(Parser, Debug)]
+/// QR Code Generator and Draws Tools
+#[derive(Parser, Debug, serde::Deserialize)]
 #[command(author, version, about, long_about = None, disable_help_flag = true)]
 struct Args {
     #[clap(subcommand)]
     command: Command,
 
     /// Print help
-    #[arg(long = "help", hide_short_help = true)] // Define only the `--help` flag
+    #[arg(long = "help", hide_short_help = true)] // Only the `--help` flag
     help: bool,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, serde::Deserialize)]
 enum Command {
-    /// Generate one qrcode
+    /// Generate one QR code
     Gen(GenArg),
 
-    /// Generate multiple qrcode from a file of list content (csv format)
+    /// Generate multiple QR codes from a CSV file
     From(FromArg),
+
+    /// Run command from config file
+    Config(Config),
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, serde::Deserialize)]
+#[serde(default)]
 struct CommonArg {
-    /// Format output (console|png|base64)
+    /// Output format (console|png|base64)
     #[clap(short = 'f', long, default_value = "console")]
     format: String,
 
-    /// Path image file for set base image. It will ignore config image width, height (also work with data template)
+    /// Path to base image file. Overrides image width/height (also works with data template)
     #[clap(short = 'b', long = "base_image")]
     base_image: Option<String>,
 
-    /// Color of QR (1 like black)
+    /// QR color (1, like black)
     #[clap(short = '1', long = "qr_color_1", default_value = "000000ff")]
     qr_color_1: String,
 
-    /// Color of QR (0 like white)
+    /// QR color (0, like white)
     #[clap(short = '0', long = "qr_color_0", default_value = "ffffffff")]
     qr_color_0: String,
 
-    /// fill background color
+    /// Fill background color
     #[clap(long = "fill", default_value = "ffffffff")]
     fill_color: String,
 
-    /// Size of image width (pixel)
+    /// Image width (pixels)
     #[clap(short = 'w', long = "image_width", default_value = "1000")]
     image_width: u32,
 
-    /// Size of image height (pixel) (default value is image width)
+    /// Image height (pixels) (default: image width)
     #[clap(short = 'h', long = "image_height")]
     image_height: Option<u32>,
 
-    /// Size of qr (pixel) (default value is image width)
+    /// QR size (pixels) (default: image width)
     #[clap(short = 's', long = "qr_size")]
     qr_size: Option<u32>,
 
-    /// Start position qr x axis (pixel)
+    /// QR X position (pixels)
     #[clap(short = 'x', long = "pos_x", default_value = "0")]
     pos_qr_x: u32,
 
-    /// Start position qr y axis (pixel)
+    /// QR Y position (pixels)
     #[clap(short = 'y', long = "pos_y", default_value = "0")]
     pos_qr_y: u32,
 
-    /// Template of draw (json5)
-    #[clap(short = 'd', long = "td")]
-    template_draw: Option<String>,
+    /// Draw template (json5) (ignored from clap)
+    #[clap(skip)]
+    #[serde(skip)]
+    template_draw: Option<Vec<Widget>>,
 
-    /// Paths of font files
+    /// Draw template as string (json5)
+    #[clap(short = 'd', long = "td")]
+    template_draw_string: Option<String>,
+
+    /// Font file paths
     #[clap(long = "fp", value_delimiter = ',')]
     font_path: Option<Vec<String>>,
 
-    /// Default Font size (percentage of image width)
+    /// Default font size (percentage of image width)
     #[clap(long = "fs", default_value = "3")]
     font_size: f32,
 
-    /// minimum font size of reduce. 0 = no reduce (replace on template)
+    /// Minimum font size for reduction. 0 = no reduction (replace in template)
     #[clap(long = "rfs", default_value = "0", hide = true)]
     reduce_font_size: u32,
 
@@ -96,38 +108,82 @@ struct CommonArg {
     #[clap(short = 'o', long, default_value = "output")]
     outdir: String,
 
-    /// The error correction level in a QR Code symbol. (l|m|q|h)
+    /// QR error correction level (l|m|q|h)
     #[clap(long = "ecc", default_value = "m")]
     error_correction_level: String,
 }
 
-#[derive(Parser, Debug)]
+impl Default for CommonArg {
+    fn default() -> Self {
+        Self {
+            format: "console".to_string(),
+            base_image: None,
+            qr_color_1: "000000ff".to_string(),
+            qr_color_0: "ffffffff".to_string(),
+            fill_color: "ffffffff".to_string(),
+            image_width: 1000,
+            image_height: None,
+            qr_size: None,
+            pos_qr_x: 0,
+            pos_qr_y: 0,
+            template_draw: None,
+            font_path: None,
+            font_size: 3.0,
+            reduce_font_size: 0,
+            outdir: "output".to_string(),
+            error_correction_level: "m".to_string(),
+            template_draw_string: None,
+        }
+    }
+}
+
+#[derive(Parser, Debug, serde::Deserialize)]
 #[command(
-    after_help = "Template can be use `{{Number of column}}` to replace data of column. And use `{{ROW}}` to replace number of row. "
+    after_help = "Template can use `{{Number of column}}` to replace column data, and `{{ROW}}` to replace row number."
 )]
+#[serde(default)]
 struct FromArg {
-    /// Path file of list content
+    /// Path to CSV file
     path: String,
 
-    /// Template of qr content
+    /// QR content template
     #[clap(short = 'c', long = "tc", default_value = "{{1}}")]
     template_content: String,
 
-    /// Template filename.
+    /// Filename template
     #[clap(short = 'n', long = "tfn", default_value = "{{1}}")]
     template_filename: String,
 
     #[command(flatten)]
+    #[serde(default)]
     common_arg: CommonArg,
 }
 
-#[derive(Parser, Debug)]
+impl Default for FromArg {
+    fn default() -> Self {
+        Self {
+            path: Default::default(),
+            template_content: "{{1}}".to_string(),
+            template_filename: "{{1}}".to_string(),
+            common_arg: Default::default(),
+        }
+    }
+}
+
+#[derive(Parser, Debug, serde::Deserialize)]
 struct GenArg {
-    /// Content to generate qrcode
+    /// QR code content
     content: String,
 
     #[command(flatten)]
+    #[serde(default)]
     common_arg: CommonArg,
+}
+
+#[derive(Parser, Debug, serde::Deserialize)]
+struct Config {
+    /// Path to the config file
+    path: String,
 }
 
 fn main() {
@@ -136,16 +192,15 @@ fn main() {
 
     let args = Args::parse();
 
-    // println!("{:?}", args);
-
     if args.help {
         let mut cmd = Args::command();
         cmd.print_help().unwrap();
-        println!(); // Add a newline for proper formatting
+        println!();
         return;
     }
 
     match &args.command {
+        Command::Config(config) => run_command_from_config_file(&config.path),
         Command::Gen(state) => handle_gen_command(state),
         Command::From(state) => handle_from_command(state),
     }
@@ -153,9 +208,47 @@ fn main() {
     println!("Elapsed: {:.2?}", elapsed);
 }
 
+// Function to execute command from config file
+fn run_command_from_config_file<P: AsRef<Path>>(path: P) {
+    let content = std::fs::read_to_string(path).expect("Cannot read config file");
+
+    #[derive(Debug, serde::Deserialize)]
+    struct ConfigFile {
+        command: String,
+    }
+    let config: ConfigFile = json5::from_str(&content).expect("Invalid config file format");
+
+    let mut state: Value = json5::from_str(&content).expect("Invalid command format");
+
+    let state_value: Value =
+        json5::from_str(&content).expect("Invalid JSON5 format in config file");
+
+    // Convert template_draw array to template_draw_string if present
+    if state_value["common_arg"]["template_draw"].is_array() {
+        state["common_arg"]["template_draw_string"] = Some(
+            json5::to_string(&state_value["common_arg"]["template_draw"].clone())
+                .expect("Invalid template draw format"),
+        )
+        .into();
+    }
+
+    match config.command.to_lowercase().as_str() {
+        "gen" => {
+            let state: GenArg = from_value(state).expect("Invalid Gen command format");
+            handle_gen_command(&state);
+        }
+        "from" => {
+            let state: FromArg = from_value(state).expect("Invalid From command format");
+            handle_from_command(&state);
+        }
+        _ => {
+            eprintln!("Unsupported command in config file.");
+        }
+    }
+}
+
 fn handle_gen_command(gen_opt: &GenArg) {
-    // if gen_opt.common_arg.template_draw {
-    let font_db = get_font_db(gen_opt.common_arg.font_path.clone()); //.into_locale_and_db();
+    let font_db = get_font_db(gen_opt.common_arg.font_path.clone());
 
     let gen_image_opt = qrgen::utils::generate::GenerateImageOptions {
         qr_color: (
@@ -176,7 +269,10 @@ fn handle_gen_command(gen_opt: &GenArg) {
         pos_qr_x: gen_opt.common_arg.pos_qr_x,
         pos_qr_y: gen_opt.common_arg.pos_qr_y,
         error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
-        template_draw: gen_opt.common_arg.template_draw.clone(),
+        template_draw: Some(
+            json5::from_str(&gen_opt.common_arg.template_draw_string.as_ref().unwrap())
+                .expect("Invalid template draw format"),
+        ),
         font_size: gen_opt.common_arg.font_size,
         reduce_font_size: gen_opt.common_arg.reduce_font_size,
         font_db,
@@ -221,7 +317,7 @@ fn handle_from_command(from_opt: &FromArg) {
         "png" => generate_list_image(list_data, from_opt, false),
         "base64" => generate_list_image(list_data, from_opt, true),
         _ => {
-            eprintln!("Can't found this format!")
+            eprintln!("Format not found!")
         }
     }
 }
@@ -232,18 +328,17 @@ fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
             qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
         qrgen::utils::console::print_qr(&content)
     }
-    return;
 }
 
 fn get_font_db(fonts_path: Option<Vec<String>>) -> fontdb::Database {
     let mut font_db = fontdb::Database::new();
 
-    // load default font file
+    // Load default font file
     font_db.load_font_data(FONT_DEFAULT.to_vec());
 
-    if fonts_path.is_some() {
-        for path in &fonts_path.unwrap() {
-            let font_data = read(path).expect(&format!("Error read font file: \"{}\"", path));
+    if let Some(paths) = fonts_path {
+        for path in &paths {
+            let font_data = read(path).expect(&format!("Error reading font file: \"{}\"", path));
             font_db.load_font_data(font_data);
         }
     }
@@ -255,7 +350,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
     create_dir_all(from_opt.common_arg.outdir.to_string())
         .expect("Cannot create output directory!");
 
-    let font_db = get_font_db(from_opt.common_arg.font_path.clone()); //.into_locale_and_db();
+    let font_db = get_font_db(from_opt.common_arg.font_path.clone());
 
     // Generate file name list
     let mut file_name_count_map: HashMap<String, u32> = HashMap::new();
@@ -275,7 +370,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
         })
         .collect();
 
-    // Process generate qr image
+    // Generate QR images
     let result_generate_image: Vec<bool> = list_data
         .par_iter()
         .enumerate()
@@ -283,8 +378,13 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
             let content =
                 qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
 
-            let template_draw: Option<String> = match &from_opt.common_arg.template_draw {
+            let template_draw_string = match &from_opt.common_arg.template_draw_string {
                 Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
+                None => None,
+            };
+
+            let template_draw = match template_draw_string {
+                Some(t) => Some(json5::from_str(&t).expect("Invalid template draw format")),
                 None => None,
             };
 
@@ -333,7 +433,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
     let count_success = result_generate_image.iter().filter(|x| **x).count();
     let count_error = result_generate_image.iter().count() - count_success;
 
-    println!("Success {}, Error {} files.", count_success, count_error);
+    println!("Success: {}, Error: {} files.", count_success, count_error);
 }
 
 fn handler_result_generate_image(
@@ -348,14 +448,14 @@ fn handler_result_generate_image(
             false
         }
         Ok(r) => {
-            // Show messsage when font size was reduced
+            // Info when font size was reduced
             if r.reduce_font_size {
-                println!("Info: Reduce font size of: {}", path);
+                println!("Info: Font size reduced for: {}", path);
             }
 
-            // Show messsage when some draw out pixel
+            // Info when some draw out pixel
             if r.draw_out_pixel {
-                println!("Info: some draw of pixel: {}", path);
+                println!("Info: Some pixels drawn out of bounds: {}", path);
             }
 
             if to_base64 {
@@ -369,8 +469,6 @@ fn handler_result_generate_image(
                 println!("result_base64:{}:{}", path, &b64);
                 true
             } else {
-                // luma8
-                // let save_image = r.image_buffer.into_luma8().save(&path);
                 let save_image = r.image_buffer.save(&path);
 
                 match save_image {

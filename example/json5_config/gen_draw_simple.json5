@@ -1,0 +1,21 @@
+{
+  command: "gen",
+  content: "abc123",
+  common_arg: {
+    format: "png",
+    image_width: 400,
+    image_height: 450,
+    font_size: 10,
+    template_draw: [
+      {
+        a: 1,
+        p: 2,
+        ts: [
+          {
+            t: 'abc123'
+          }
+        ]
+      }
+    ],
+  }
+}

@@ -1,0 +1,8 @@
+{
+  command: "gen",
+  content: "abc123",
+  common_arg: {
+    format: "png",
+    image_width: 400,
+  }
+}
