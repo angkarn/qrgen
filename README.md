@@ -207,9 +207,8 @@ qrgen config example.json5
 ```
 
 **Notes:**
-- You can omit keys in `common_arg` that have default values, such as `qr_size`, `image_width`, etc.
 - If you use a draw template, you can specify it directly as an array/object with the template_draw key in JSON5, or as a stringified JSON using the `template_draw_string` key.
-- See example `example/json5_config/`.
+- See [example](example/json5_config).
 
 ---
 
