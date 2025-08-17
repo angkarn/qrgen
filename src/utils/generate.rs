@@ -40,7 +40,7 @@ pub fn get_alpha_color(base_color: Rgba<u8>, color: [u8; 4]) -> [u8; 4] {
 }
 
 pub fn generate_image(
-    content: String,
+    content: Option<String>,
     opt: GenerateImageOptions,
 ) -> Result<ResultGenerateImage, String> {
     // Create a new image with additional space at the top
@@ -64,7 +64,7 @@ pub fn generate_image(
     };
 
     // Generate and draw QR
-    if opt.qr_size != 0 {
+    if opt.qr_size != 0 && content.is_some() {
         // set qr error correction level
         let ecc = match opt.error_correction_level.as_str() {
             "l" => QrCodeEcc::Low,
@@ -75,7 +75,7 @@ pub fn generate_image(
         };
 
         // Generate a QR code and convert it to ImageBuffer
-        let qr_code_buffer = qrcode_generator::to_image_buffer(content, ecc, opt.qr_size as usize)
+        let qr_code_buffer = qrcode_generator::to_image_buffer(content.unwrap(), ecc, opt.qr_size as usize)
             .expect("Failed to generate QR code");
 
         // Copy the QR code image onto the new image

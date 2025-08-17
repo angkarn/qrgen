@@ -148,7 +148,7 @@ struct FromArg {
 
     /// QR content template
     #[clap(short = 'c', long = "tc", default_value = "{{1}}")]
-    template_content: String,
+    template_content: Option<String>,
 
     /// Filename template
     #[clap(short = 'n', long = "tfn", default_value = "{{1}}")]
@@ -163,7 +163,7 @@ impl Default for FromArg {
     fn default() -> Self {
         Self {
             path: Default::default(),
-            template_content: "{{1}}".to_string(),
+            template_content: Some("{{1}}".to_string()),
             template_filename: "{{1}}".to_string(),
             common_arg: Default::default(),
         }
@@ -173,11 +173,20 @@ impl Default for FromArg {
 #[derive(Parser, Debug, serde::Deserialize)]
 struct GenArg {
     /// QR code content
-    content: String,
+    content: Option<String>,
 
     #[command(flatten)]
     #[serde(default)]
     common_arg: CommonArg,
+}
+
+impl Default for GenArg {
+    fn default() -> Self {
+        Self {
+            content: None,
+            common_arg: Default::default(),
+        }
+    }
 }
 
 #[derive(Parser, Debug, serde::Deserialize)]
@@ -269,17 +278,26 @@ fn handle_gen_command(gen_opt: &GenArg) {
         pos_qr_x: gen_opt.common_arg.pos_qr_x,
         pos_qr_y: gen_opt.common_arg.pos_qr_y,
         error_correction_level: gen_opt.common_arg.error_correction_level.clone(),
-        template_draw: Some(
-            json5::from_str(&gen_opt.common_arg.template_draw_string.as_ref().unwrap())
-                .expect("Invalid template draw format"),
-        ),
+        template_draw: if gen_opt.common_arg.template_draw_string.is_some() {
+            Some(
+                json5::from_str(&gen_opt.common_arg.template_draw_string.as_ref().unwrap())
+                    .expect("Invalid template draw format"),
+            )
+        } else {
+            None
+        },
         font_size: gen_opt.common_arg.font_size,
         reduce_font_size: gen_opt.common_arg.reduce_font_size,
         font_db,
     };
 
     match gen_opt.common_arg.format.as_str() {
-        "console" => qrgen::utils::console::print_qr(&gen_opt.content),
+        "console" => qrgen::utils::console::print_qr(if let Some(content) = &gen_opt.content {
+            content
+        } else {
+            eprintln!("Content is required for console output.");
+            return;
+        }),
         "png" => {
             let _ = create_dir_all(&gen_opt.common_arg.outdir.to_string())
                 .expect("Cannot create output directory!");
@@ -324,8 +342,17 @@ fn handle_from_command(from_opt: &FromArg) {
 
 fn generate_list_console(list_data: Vec<Vec<String>>, from_opt: &FromArg) {
     for (index, row) in list_data.iter().enumerate() {
-        let content =
-            qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
+        // check content and error if empty
+        if from_opt.template_content.is_none() {
+            eprintln!("Error: template_content is required for console output.");
+            return;
+        }
+
+        let content = qrgen::utils::template::from_vec(
+            row.to_vec(),
+            &from_opt.template_content.clone().unwrap(),
+            index,
+        );
         qrgen::utils::console::print_qr(&content)
     }
 }
@@ -375,8 +402,17 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
         .par_iter()
         .enumerate()
         .map(|(index, row)| -> bool {
-            let content =
-                qrgen::utils::template::from_vec(row.to_vec(), &from_opt.template_content, index);
+            // check content and error if empty
+
+            let content = if from_opt.template_content.is_some() {
+                Some(qrgen::utils::template::from_vec(
+                    row.to_vec(),
+                    &from_opt.template_content.clone().unwrap(),
+                    index,
+                ))
+            } else {
+                None
+            };
 
             let template_draw_string = match &from_opt.common_arg.template_draw_string {
                 Some(t) => Some(qrgen::utils::template::from_vec(row.to_vec(), &t, index)),
@@ -419,7 +455,7 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
             };
 
             let generate_image_result =
-                qrgen::utils::generate::generate_image(content.to_string(), gen_image_opt);
+                qrgen::utils::generate::generate_image(content, gen_image_opt);
 
             handler_result_generate_image(
                 index + 1,
