@@ -1,0 +1,26 @@
+{
+  command: "from",
+  path: "example/set_base_image/from/data.csv",
+  common_arg: {
+    format: "png",
+    base_image: "example/set_base_image/from/{{2}}",
+    qr_size: 0,
+    template_draw: [
+      {
+        a: 1,
+        p: 1,
+        f: 1,
+        fs: 16,
+        c: 'ffffff',
+        ts: [
+          {
+            t: '{{1}}'
+          }
+        ]
+      }
+    ],
+    font_path: [
+      "fonts/paytone-one-v23-latin-regular.ttf"
+    ],
+  }
+}

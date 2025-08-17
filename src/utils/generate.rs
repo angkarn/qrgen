@@ -19,7 +19,7 @@ pub struct GenerateImageOptions {
     pub error_correction_level: String,
     pub pos_qr_x: u32,
     pub pos_qr_y: u32,
-    pub template_draw: Option<String>,
+    pub template_draw: Option<Vec<Widget>>,
     pub font_size: f32,
     pub reduce_font_size: u32,
     pub font_db: fontdb::Database,
@@ -111,9 +111,8 @@ pub fn generate_image(
     }
 
     // Process draw text to image
-    let text = opt.template_draw.clone().unwrap();
 
-    let widgets = json5::from_str::<Vec<Widget>>(&text).unwrap();
+    let widgets = opt.template_draw.unwrap();
     // println!("deserialized = {:#?}", widgets);
 
     let mut swash_cache = SwashCache::new();
