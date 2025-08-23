@@ -24,11 +24,15 @@ curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/qrgen
 
 ### Windows (x86_64)
 
-Can be Download from [Release](https://github.com/angkarn/qrgen/releases).
+Download from [Release](https://github.com/angkarn/qrgen/releases).
+
+### WASI 
+
+Download from [Release](https://github.com/angkarn/qrgen/releases).
 
 ### Other
 
-For other platforms can be clone this repo and try build it.
+See [build](#build) and try build it.
 
 ## Uasge
 
@@ -130,6 +134,8 @@ Arguments:
 ```
 
 ## Example
+
+You can try on browser [Demo](https://qrgen-browser-demo.pages.dev) (Run via WASI build)
 
 #### gen
 
