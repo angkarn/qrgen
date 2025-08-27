@@ -9,17 +9,23 @@ Generate QRCode image and draw customizable texts (font, template on json) via c
 - Set template from data list e.g. qr content, draw, filename, set base image.
 
 ## Download
+See [Release](https://github.com/angkarn/qrgen/releases).
 
 ### Mac (Apple Silicon)
 
 ```sh
-curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/qrgen-aarch64-apple-darwin && chmod +x qrgen
+curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/aarch64-apple-darwin && chmod +x qrgen
 ```
 
 ### Mac (Intel)
 
 ```sh
-curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/qrgen-x86_64-apple-darwin && chmod +x qrgen
+curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/x86_64-apple-darwin && chmod +x qrgen
+```
+### Linux GNU (x86-64)
+
+```sh
+curl -L -o qrgen https://github.com/angkarn/qrgen/releases/latest/download/x86_64-unknown-linux-gnu && chmod +x qrgen
 ```
 
 ### Windows (x86_64)
