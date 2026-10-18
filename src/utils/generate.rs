@@ -1,5 +1,5 @@
 use qrcode_generator::QrCodeEcc;
-use rust_text_draw::image::{open, DynamicImage, Rgba};
+use rust_text_draw::image::{open, DynamicImage, Rgba, RgbaImage};
 use rust_text_draw::{draw_text, GenericImageView, Widget};
 use rust_text_draw::{fontdb, FontSystem, GenericImage, SwashCache};
 
@@ -22,7 +22,22 @@ pub struct GenerateImageOptions {
     pub template_draw: Option<Vec<Widget>>,
     pub font_size: f32,
     pub reduce_font_size: u32,
-    pub font_db: fontdb::Database,
+}
+
+/// Font/glyph caches reused across images.
+/// `FontSystem` and `SwashCache` are not `Sync`, so for parallel work keep one per thread.
+pub struct TextCache {
+    pub font_system: FontSystem,
+    pub swash_cache: SwashCache,
+}
+
+impl TextCache {
+    pub fn new(font_db: fontdb::Database) -> Self {
+        Self {
+            font_system: FontSystem::new_with_locale_and_db("en-US".to_string(), font_db),
+            swash_cache: SwashCache::new(),
+        }
+    }
 }
 
 pub fn get_alpha_color(base_color: Rgba<u8>, color: [u8; 4]) -> [u8; 4] {
@@ -42,25 +57,23 @@ pub fn get_alpha_color(base_color: Rgba<u8>, color: [u8; 4]) -> [u8; 4] {
 pub fn generate_image(
     content: Option<String>,
     opt: GenerateImageOptions,
+    text_cache: &mut TextCache,
 ) -> Result<ResultGenerateImage, String> {
     // Create a new image with additional space at the top
     let mut new_image = if opt.base_image.is_some() {
         open(opt.base_image.unwrap()).unwrap()
     } else {
-        let mut temp_new_image = DynamicImage::new_rgba8(opt.image_width, opt.image_height);
-
         // Set widget color
         let fill_color_rgba: [u8; 4] = u32::from_str_radix(opt.fill_color.as_str(), 16)
             .unwrap()
             .to_be_bytes();
 
         // fill bg base image
-        for y in 0..temp_new_image.height() as u32 {
-            for x in 0..temp_new_image.width() as u32 {
-                temp_new_image.put_pixel(x, y, Rgba(fill_color_rgba))
-            }
-        }
-        temp_new_image
+        DynamicImage::ImageRgba8(RgbaImage::from_pixel(
+            opt.image_width,
+            opt.image_height,
+            Rgba(fill_color_rgba),
+        ))
     };
 
     // Generate and draw QR
@@ -87,16 +100,39 @@ pub fn generate_image(
             .unwrap()
             .to_be_bytes();
 
-        for x in 0..qr_code_buffer.width() {
-            for y in 0..qr_code_buffer.height() {
-                let pixel_value = qr_code_buffer.get_pixel(x, y);
-                let new_image_pixel = new_image.get_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y);
-                if pixel_value[0] == 0 {
-                    let color = get_alpha_color(new_image_pixel, qr_color_1);
-                    new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba(color));
-                } else {
-                    let color = get_alpha_color(new_image_pixel, qr_color_0);
-                    new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba(color));
+        // Row-major loop (matches memory layout). Blending only depends on
+        // (base pixel, qr color), so remember the last result to skip repeated math.
+        let mut last_blend: [Option<(Rgba<u8>, [u8; 4])>; 2] = [None, None];
+        let mut blend = |base: Rgba<u8>, is_dark: bool| -> [u8; 4] {
+            let (slot, qr_color) = if is_dark {
+                (&mut last_blend[1], qr_color_1)
+            } else {
+                (&mut last_blend[0], qr_color_0)
+            };
+            match slot {
+                Some((b, c)) if *b == base => *c,
+                _ => {
+                    let c = get_alpha_color(base, qr_color);
+                    *slot = Some((base, c));
+                    c
+                }
+            }
+        };
+
+        for y in 0..qr_code_buffer.height() {
+            for x in 0..qr_code_buffer.width() {
+                let is_dark = qr_code_buffer.get_pixel(x, y)[0] == 0;
+                let (px, py) = (opt.pos_qr_x + x, opt.pos_qr_y + y);
+                match &mut new_image {
+                    // Fast path: direct buffer access (skips DynamicImage conversion)
+                    DynamicImage::ImageRgba8(buf) => {
+                        let pixel = buf.get_pixel_mut(px, py);
+                        *pixel = Rgba(blend(*pixel, is_dark));
+                    }
+                    image => {
+                        let color = blend(image.get_pixel(px, py), is_dark);
+                        image.put_pixel(px, py, Rgba(color));
+                    }
                 }
             }
         }
@@ -115,18 +151,15 @@ pub fn generate_image(
     let widgets = opt.template_draw.unwrap();
     // println!("deserialized = {:#?}", widgets);
 
-    let mut swash_cache = SwashCache::new();
     let text_layout_width = new_image.width();
     let text_layout_height = new_image.height();
-
-    let mut font_system = FontSystem::new_with_locale_and_db("en-US".to_string(), opt.font_db);
 
     // for wait to set and return result
     let reduce_font_size = false;
 
     let result_draw_text = draw_text(
-        &mut swash_cache,
-        &mut font_system,
+        &mut text_cache.swash_cache,
+        &mut text_cache.font_system,
         &mut new_image,
         0.0,
         0.0,
