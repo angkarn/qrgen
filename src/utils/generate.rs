@@ -22,7 +22,22 @@ pub struct GenerateImageOptions {
     pub template_draw: Option<Vec<Widget>>,
     pub font_size: f32,
     pub reduce_font_size: u32,
-    pub font_db: fontdb::Database,
+}
+
+/// Font/glyph caches reused across images.
+/// `FontSystem` and `SwashCache` are not `Sync`, so for parallel work keep one per thread.
+pub struct TextCache {
+    pub font_system: FontSystem,
+    pub swash_cache: SwashCache,
+}
+
+impl TextCache {
+    pub fn new(font_db: fontdb::Database) -> Self {
+        Self {
+            font_system: FontSystem::new_with_locale_and_db("en-US".to_string(), font_db),
+            swash_cache: SwashCache::new(),
+        }
+    }
 }
 
 pub fn get_alpha_color(base_color: Rgba<u8>, color: [u8; 4]) -> [u8; 4] {
@@ -42,6 +57,7 @@ pub fn get_alpha_color(base_color: Rgba<u8>, color: [u8; 4]) -> [u8; 4] {
 pub fn generate_image(
     content: Option<String>,
     opt: GenerateImageOptions,
+    text_cache: &mut TextCache,
 ) -> Result<ResultGenerateImage, String> {
     // Create a new image with additional space at the top
     let mut new_image = if opt.base_image.is_some() {
@@ -115,18 +131,15 @@ pub fn generate_image(
     let widgets = opt.template_draw.unwrap();
     // println!("deserialized = {:#?}", widgets);
 
-    let mut swash_cache = SwashCache::new();
     let text_layout_width = new_image.width();
     let text_layout_height = new_image.height();
-
-    let mut font_system = FontSystem::new_with_locale_and_db("en-US".to_string(), opt.font_db);
 
     // for wait to set and return result
     let reduce_font_size = false;
 
     let result_draw_text = draw_text(
-        &mut swash_cache,
-        &mut font_system,
+        &mut text_cache.swash_cache,
+        &mut text_cache.font_system,
         &mut new_image,
         0.0,
         0.0,

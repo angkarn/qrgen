@@ -7,7 +7,10 @@ use rust_text_draw::{
     Widget,
 };
 use serde_json::{from_value, Value};
+use thread_local::ThreadLocal;
+use qrgen::utils::generate::TextCache;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fs::{create_dir_all, read},
     io::Cursor,
@@ -288,8 +291,9 @@ fn handle_gen_command(gen_opt: &GenArg) {
         },
         font_size: gen_opt.common_arg.font_size,
         reduce_font_size: gen_opt.common_arg.reduce_font_size,
-        font_db,
     };
+
+    let mut text_cache = TextCache::new(font_db);
 
     match gen_opt.common_arg.format.as_str() {
         "console" => qrgen::utils::console::print_qr(if let Some(content) = &gen_opt.content {
@@ -305,7 +309,11 @@ fn handle_gen_command(gen_opt: &GenArg) {
             println!("Generate Image...");
 
             let result =
-                qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
+                qrgen::utils::generate::generate_image(
+                    gen_opt.content.clone(),
+                    gen_image_opt,
+                    &mut text_cache,
+                );
 
             handler_result_generate_image(
                 1,
@@ -316,7 +324,11 @@ fn handle_gen_command(gen_opt: &GenArg) {
         }
         "base64" => {
             let result =
-                qrgen::utils::generate::generate_image(gen_opt.content.clone(), gen_image_opt);
+                qrgen::utils::generate::generate_image(
+                    gen_opt.content.clone(),
+                    gen_image_opt,
+                    &mut text_cache,
+                );
 
             handler_result_generate_image(1, &result, "".to_owned(), true);
         }
@@ -378,6 +390,10 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
         .expect("Cannot create output directory!");
 
     let font_db = get_font_db(from_opt.common_arg.font_path.clone());
+
+    // One text cache per worker thread, reused for every row that thread renders
+    // (shaped fonts + rasterized glyphs stay warm instead of being rebuilt per row)
+    let text_caches: ThreadLocal<RefCell<TextCache>> = ThreadLocal::new();
 
     // Generate file name list
     let mut file_name_count_map: HashMap<String, u32> = HashMap::new();
@@ -451,11 +467,14 @@ fn generate_list_image(list_data: Vec<Vec<String>>, from_opt: &FromArg, to_base6
                 template_draw: template_draw,
                 font_size: from_opt.common_arg.font_size,
                 reduce_font_size: from_opt.common_arg.reduce_font_size,
-                font_db: font_db.clone(),
             };
 
+            let mut text_cache = text_caches
+                .get_or(|| RefCell::new(TextCache::new(font_db.clone())))
+                .borrow_mut();
+
             let generate_image_result =
-                qrgen::utils::generate::generate_image(content, gen_image_opt);
+                qrgen::utils::generate::generate_image(content, gen_image_opt, &mut text_cache);
 
             handler_result_generate_image(
                 index + 1,
