@@ -1,5 +1,5 @@
 use qrcode_generator::QrCodeEcc;
-use rust_text_draw::image::{open, DynamicImage, Rgba};
+use rust_text_draw::image::{open, DynamicImage, Rgba, RgbaImage};
 use rust_text_draw::{draw_text, GenericImageView, Widget};
 use rust_text_draw::{fontdb, FontSystem, GenericImage, SwashCache};
 
@@ -63,20 +63,17 @@ pub fn generate_image(
     let mut new_image = if opt.base_image.is_some() {
         open(opt.base_image.unwrap()).unwrap()
     } else {
-        let mut temp_new_image = DynamicImage::new_rgba8(opt.image_width, opt.image_height);
-
         // Set widget color
         let fill_color_rgba: [u8; 4] = u32::from_str_radix(opt.fill_color.as_str(), 16)
             .unwrap()
             .to_be_bytes();
 
         // fill bg base image
-        for y in 0..temp_new_image.height() as u32 {
-            for x in 0..temp_new_image.width() as u32 {
-                temp_new_image.put_pixel(x, y, Rgba(fill_color_rgba))
-            }
-        }
-        temp_new_image
+        DynamicImage::ImageRgba8(RgbaImage::from_pixel(
+            opt.image_width,
+            opt.image_height,
+            Rgba(fill_color_rgba),
+        ))
     };
 
     // Generate and draw QR
@@ -103,16 +100,39 @@ pub fn generate_image(
             .unwrap()
             .to_be_bytes();
 
-        for x in 0..qr_code_buffer.width() {
-            for y in 0..qr_code_buffer.height() {
-                let pixel_value = qr_code_buffer.get_pixel(x, y);
-                let new_image_pixel = new_image.get_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y);
-                if pixel_value[0] == 0 {
-                    let color = get_alpha_color(new_image_pixel, qr_color_1);
-                    new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba(color));
-                } else {
-                    let color = get_alpha_color(new_image_pixel, qr_color_0);
-                    new_image.put_pixel(opt.pos_qr_x + x, opt.pos_qr_y + y, Rgba(color));
+        // Row-major loop (matches memory layout). Blending only depends on
+        // (base pixel, qr color), so remember the last result to skip repeated math.
+        let mut last_blend: [Option<(Rgba<u8>, [u8; 4])>; 2] = [None, None];
+        let mut blend = |base: Rgba<u8>, is_dark: bool| -> [u8; 4] {
+            let (slot, qr_color) = if is_dark {
+                (&mut last_blend[1], qr_color_1)
+            } else {
+                (&mut last_blend[0], qr_color_0)
+            };
+            match slot {
+                Some((b, c)) if *b == base => *c,
+                _ => {
+                    let c = get_alpha_color(base, qr_color);
+                    *slot = Some((base, c));
+                    c
+                }
+            }
+        };
+
+        for y in 0..qr_code_buffer.height() {
+            for x in 0..qr_code_buffer.width() {
+                let is_dark = qr_code_buffer.get_pixel(x, y)[0] == 0;
+                let (px, py) = (opt.pos_qr_x + x, opt.pos_qr_y + y);
+                match &mut new_image {
+                    // Fast path: direct buffer access (skips DynamicImage conversion)
+                    DynamicImage::ImageRgba8(buf) => {
+                        let pixel = buf.get_pixel_mut(px, py);
+                        *pixel = Rgba(blend(*pixel, is_dark));
+                    }
+                    image => {
+                        let color = blend(image.get_pixel(px, py), is_dark);
+                        image.put_pixel(px, py, Rgba(color));
+                    }
                 }
             }
         }
