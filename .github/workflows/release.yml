@@ -57,8 +57,44 @@ jobs:
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
 
+  web:
+    name: Build the browser package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install tools
+        run: |
+          rustup target add wasm32-unknown-unknown
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          cargo install wasm-bindgen-cli --version "$version" --locked
+          npm install -g binaryen@132.0.0
+
+      - name: Build
+        run: crates/qrgen-wasm/build.sh dist/qrgen-web
+
+      - name: Smoke test
+        run: |
+          cat > smoke.mjs <<'JS'
+          import { readFileSync } from "node:fs";
+          const { default: init, Batch } = await import("./dist/qrgen-web/qrgen.js");
+          await init({ module_or_path: readFileSync("dist/qrgen-web/qrgen_bg.wasm") });
+          const image = new Batch('{ data: "hello" }', new Map()).render(0);
+          if (image.png.length < 100) throw new Error("no image");
+          JS
+          node smoke.mjs
+
+      - name: Package
+        run: tar -czf dist/qrgen-web.tar.gz -C dist qrgen-web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qrgen-web
+          path: dist/qrgen-web.tar.gz
+          if-no-files-found: error
+
   release:
-    needs: build
+    needs: [build, web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

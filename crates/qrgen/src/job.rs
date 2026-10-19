@@ -11,7 +11,7 @@ use crate::{
 /// Reads the files a [`Job`] refers to (template, fonts, CSV, images) by the path written in it.
 ///
 /// The CLI reads from disk; the browser build reads from files the page provides.
-pub trait FileSource: Sync {
+pub trait FileSource {
     fn read(&self, path: &str) -> std::result::Result<Vec<u8>, String>;
 }
 

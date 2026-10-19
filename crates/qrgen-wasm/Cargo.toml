@@ -1,0 +1,17 @@
+[package]
+name = "qrgen-wasm"
+description = "qrgen for the browser (wasm-bindgen)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys = "0.3"
+qrgen = { path = "../qrgen" }
+wasm-bindgen = "=0.2.129"

@@ -128,10 +128,33 @@ A template is a list of [textplate nodes](https://github.com/angkarn/textplate#t
 
 `image` nodes load their `src` path the same way as base images.
 
+## Browser
+
+`crates/qrgen-wasm` is a [wasm-bindgen](https://github.com/wasm-bindgen/wasm-bindgen) package
+that runs job files in the browser (`qrgen-web.tar.gz` on the release page, or
+`crates/qrgen-wasm/build.sh`). Paths in the job are looked up in the files you pass, and only the
+files the job uses are read.
+
+```js
+import init, { Batch } from "./qrgen-web/qrgen.js";
+await init();
+
+const files = new Map([["data.csv", csvBytes], ["fonts/body.ttf", fontBytes]]); // Uint8Arrays
+const batch = new Batch(jobJson5, files);   // throws on an invalid job
+for (let i = 0; i < batch.length; i++) {
+  const { name, png, warnings } = batch.render(i); // throws for a failed row
+}
+```
+
+A `Batch` renders on the thread that made it. To use every core, make one per Web Worker and
+split the rows; `batch.files` lists the files the job read, to pass to the other workers.
+[qrgen-browser-demo](https://github.com/angkarn/qrgen-browser-demo) does this.
+
 ## Library
 
-`crates/qrgen` is the library behind the CLI. It does no file I/O and builds for
-`wasm32-unknown-unknown`.
+`crates/qrgen` is the library behind the CLI and the browser package. It does no file I/O and
+builds for `wasm32-unknown-unknown`. `Job` and `Batch` load a job file through a `FileSource`;
+`Generator` renders a template directly:
 
 ```rust
 use qrgen::{Canvas, Generator, QrStyle, Row};

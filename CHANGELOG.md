@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Browser package (`crates/qrgen-wasm`, wasm-bindgen): `new Batch(job, files)` runs the same JSON5
+  jobs as `qrgen run` with files from the page, and renders rows to PNGs. Released as
+  `qrgen-web.tar.gz`.
+- Library: `Job`, `Batch` and `FileSource` (feature `decode`) load and plan a job, so the CLI and
+  the browser share one job format.
+- `qrgen --version` prints `qrgen` instead of `qrgen-cli`.
+
 ## v0.3.0
 
 A rewrite on [textplate](https://github.com/angkarn/textplate). Commands, options, config files

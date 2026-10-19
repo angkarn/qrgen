@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/qrgen", "crates/qrgen-cli"]
+members = ["crates/qrgen", "crates/qrgen-cli", "crates/qrgen-wasm"]
 resolver = "2"
 
 [workspace.package]
