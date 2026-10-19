@@ -1,8 +1,8 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::Deserialize;
 use serde_json::Value;
-use textplate::{Assets, Fonts, Options, Template, TemplateString};
+use textplate::{image::RgbaImage, Assets, Fonts, Options, Template, TemplateString};
 
 use crate::{
     default_template, Canvas, Error, Generator, Output, QrStyle, Result, Row, UniqueNames,
@@ -108,7 +108,10 @@ pub struct Batch {
     records: Vec<Vec<String>>,
     data: RowData,
     names: Vec<std::result::Result<String, String>>,
+    /// Images used by several rows, decoded once.
     assets: Assets,
+    /// Images used by one row, decoded when that row is rendered.
+    encoded: HashMap<String, Vec<u8>>,
     asset_errors: HashMap<String, String>,
 }
 
@@ -173,6 +176,7 @@ impl Batch {
             data,
             names: Vec::new(),
             assets: Assets::new(),
+            encoded: HashMap::new(),
             asset_errors: HashMap::new(),
         };
 
@@ -192,30 +196,42 @@ impl Batch {
             })
             .collect();
 
-        // Every image the rows need, loaded once
-        let mut needed = BTreeSet::new();
+        // Images used by several rows (a logo, a shared background) are decoded once here. The
+        // others stay encoded until their row renders, so a batch of photos is decoded in parallel
+        // and never held in memory all at once.
+        let mut uses = BTreeMap::<String, usize>::new();
         for i in 0..batch.len() {
             if let Ok(row) = batch.row(i) {
-                needed.extend(batch.generator.asset_names(&row).unwrap_or_default());
+                let names: BTreeSet<_> = batch
+                    .generator
+                    .asset_names(&row)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                for name in names {
+                    *uses.entry(name).or_default() += 1;
+                }
             }
         }
-        for name in needed {
-            let image = files.read(&name).and_then(|bytes| {
-                textplate::image::load_from_memory(&bytes)
-                    .map(|img| img.into_rgba8())
-                    .map_err(|e| format!("cannot decode image {name}: {e}"))
-            });
-            match image {
+        for (name, count) in uses {
+            let bytes = match files.read(&name) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    let message = format!("cannot read image {name}: {e}");
+                    batch.asset_errors.insert(name, message);
+                    continue;
+                }
+            };
+            if count == 1 {
+                batch.encoded.insert(name, bytes);
+                continue;
+            }
+            match decode(&name, &bytes) {
                 Ok(img) => {
                     batch.assets.insert(name, img);
                 }
                 Err(e) => {
-                    let message = if e.starts_with("cannot decode") {
-                        e
-                    } else {
-                        format!("cannot read image {name}: {e}")
-                    };
-                    batch.asset_errors.insert(name, message);
+                    batch.asset_errors.insert(name, e);
                 }
             }
         }
@@ -257,17 +273,31 @@ impl Batch {
     pub fn render(&self, i: usize) -> Result<Output> {
         self.names[i].as_ref().map_err(|e| Error::Data(e.clone()))?;
         let row = self.row(i).map_err(Error::Data)?;
+        let mut row_assets = None;
         for name in self.generator.asset_names(&row)? {
             if let Some(e) = self.asset_errors.get(&name) {
                 return Err(Error::Data(e.clone()));
             }
+            if let Some(bytes) = self.encoded.get(&name) {
+                let img = decode(&name, bytes).map_err(Error::Data)?;
+                row_assets
+                    .get_or_insert_with(|| self.assets.clone())
+                    .insert(name, img);
+            }
         }
-        self.generator.render(&row, &self.assets)
+        self.generator
+            .render(&row, row_assets.as_ref().unwrap_or(&self.assets))
     }
 
     pub fn generator(&self) -> &Generator {
         &self.generator
     }
+}
+
+fn decode(name: &str, bytes: &[u8]) -> std::result::Result<RgbaImage, String> {
+    textplate::image::load_from_memory(bytes)
+        .map(|img| img.into_rgba8())
+        .map_err(|e| format!("cannot decode image {name}: {e}"))
 }
 
 type Records = (Option<Vec<String>>, Vec<Vec<String>>);
@@ -339,5 +369,35 @@ mod tests {
         let batch = Batch::new(&job, &files).unwrap();
         let err = batch.render(0).err().unwrap().to_string();
         assert!(err.contains("cannot read image bg.png"), "{err}");
+    }
+
+    #[test]
+    fn decodes_shared_images_once_and_row_images_on_render() {
+        let mut png = Vec::new();
+        textplate::image::DynamicImage::new_rgba8(4, 4)
+            .write_to(
+                &mut std::io::Cursor::new(&mut png),
+                textplate::image::ImageFormat::Png,
+            )
+            .unwrap();
+        let files = Files(HashMap::from([
+            ("rows.csv", b"a.png\nb.png\nbad.png\n".to_vec()),
+            ("logo.png", png.clone()),
+            ("a.png", png.clone()),
+            ("b.png", png),
+            ("bad.png", b"not an image".to_vec()),
+        ]));
+        let job = Job::from_json5(
+            r#"{ csv: "rows.csv", canvas: { base_image: "{{1}}" },
+                 template: [{ type: "image", src: "logo.png" }] }"#,
+        )
+        .unwrap();
+        let batch = Batch::new(&job, &files).unwrap();
+        assert!(batch.assets.contains("logo.png"));
+        assert_eq!(batch.encoded.len(), 3);
+        assert_eq!(batch.render(0).unwrap().image.dimensions(), (4, 4));
+        assert!(batch.render(1).is_ok());
+        let err = batch.render(2).err().unwrap().to_string();
+        assert!(err.starts_with("cannot decode image bad.png"), "{err}");
     }
 }
