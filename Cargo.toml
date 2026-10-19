@@ -1,6 +1,6 @@
 [package]
 name = "qrgen"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Angkarn Pukawanach <angkarn.pk@gmail.com>"]
 description = "QR Code Generator and Draws Tools"
