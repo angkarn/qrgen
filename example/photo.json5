@@ -1,0 +1,14 @@
+// Title and a translucent QR on each photo listed in photos.csv
+//   qrgen run example/photo.json5
+{
+  csv: "photos.csv",
+  data: "https://example.com/photos/{{2}}",
+  canvas: { base_image: "photos/{{2}}" },
+  fonts: [{ name: "title", path: "../fonts/paytone-one-v23-latin-regular.ttf" }],
+  qr: { dark: "#000000b3", light: "#ffffff80" },
+  output: { dir: "output/photo", name: "{{1}}" },
+  template: [
+    { type: "text", text: "{{1}}", size: "16vw", color: "#ffffff", align: "center", valign: "middle", fit: "shrink" },
+    { type: "qr", x: "74%", y: "74%", width: "22%", height: "22%" },
+  ],
+}

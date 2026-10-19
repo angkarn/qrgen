@@ -1,0 +1,28 @@
+[package]
+name = "qrgen-cli"
+description = "Command line tool for qrgen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "qrgen"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive"] }
+csv = "1.3"
+json5 = "1"
+qrgen = { path = "../qrgen" }
+rayon = "1.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+rqrr = { version = "0.11", features = ["img"] }
+tempfile = "3"

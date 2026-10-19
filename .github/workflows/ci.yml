@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust components
+        run: |
+          rustup component add rustfmt clippy
+          rustup target add wasm32-unknown-unknown wasm32-wasip1
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - name: Build the library for the browser
+        run: cargo build --locked --release -p qrgen --target wasm32-unknown-unknown
+      - name: Build the CLI for WASI
+        run: cargo build --locked --release -p qrgen-cli --target wasm32-wasip1
+      - name: Run the examples
+        run: |
+          for job in example/*.json5; do cargo run --locked --release -p qrgen-cli -- run "$job"; done

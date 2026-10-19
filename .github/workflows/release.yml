@@ -8,10 +8,6 @@ on:
       version:
         description: "Release tag, e.g. v0.2.0"
         required: true
-      rust_text_draw_ref:
-        description: "angkarn/rust-text-draw git ref to build against"
-        required: true
-        default: "main"
 
 permissions:
   contents: write
@@ -30,15 +26,7 @@ jobs:
           - { os: macos-latest, target: aarch64-apple-darwin, bin: qrgen, asset: aarch64-apple-darwin, smoke: true }
           - { os: macos-latest, target: x86_64-apple-darwin, bin: qrgen, asset: x86_64-apple-darwin, smoke: false }
     steps:
-      # qrgen depends on rust-text-draw via `path = "../rust-text-draw"`, so check both out side by side
-      - uses: actions/checkout@v4
-        with:
-          path: qrgen
-      - uses: actions/checkout@v4
-        with:
-          repository: angkarn/rust-text-draw
-          ref: ${{ inputs.rust_text_draw_ref }}
-          path: rust-text-draw
+      - uses: actions/checkout@v5
 
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
@@ -48,22 +36,20 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
 
       - name: Build
-        working-directory: qrgen
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        run: cargo build --release --locked -p qrgen-cli --target ${{ matrix.target }}
 
       - name: Smoke test
         if: matrix.smoke
-        working-directory: qrgen
         run: |
           ./target/${{ matrix.target }}/release/qrgen --version
-          ./target/${{ matrix.target }}/release/qrgen config example/json5_config/gen_draw_full.json5
-          ./target/${{ matrix.target }}/release/qrgen config example/json5_config/from_draw_base_image.json5
-          test -s output/qr.png
+          ./target/${{ matrix.target }}/release/qrgen run example/hello.json5
+          ./target/${{ matrix.target }}/release/qrgen run example/photo.json5
+          test -s example/output/hello.png
 
       - name: Collect asset
         run: |
           mkdir dist
-          cp qrgen/target/${{ matrix.target }}/release/${{ matrix.bin }} dist/${{ matrix.asset }}
+          cp target/${{ matrix.target }}/release/${{ matrix.bin }} dist/${{ matrix.asset }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -75,13 +61,13 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check version
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          crate_version="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+          crate_version="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"  # [workspace.package]
           if [ "$crate_version" != "$VERSION" ]; then
             echo "Cargo.toml version ($crate_version) does not match $VERSION"; exit 1
           fi

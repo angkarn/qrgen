@@ -1,8 +1,0 @@
-{
-  command: "from",
-  path: "example/data.csv",
-  common_arg: {
-    format: "png",
-    image_width: 400,
-  }
-}

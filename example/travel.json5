@@ -1,0 +1,17 @@
+// Text and a translucent QR on a single photo
+//   qrgen run example/travel.json5
+{
+  data: "travel is my therapy!",
+  canvas: { base_image: "travel.jpg" },
+  fonts: [{ name: "script", path: "../fonts/knewave-v14-latin-regular.ttf" }],
+  qr: { dark: "#00000080", light: "#ffffff4d" },
+  output: { file: "output/travel.png" },
+  template: [
+    { type: "qr", x: "72%", y: "5%", width: "23%", height: "35%" },
+    { type: "box", x: "4%", y: "33%", width: "60%", height: "50%", color: "#ffffff", children: [
+      { type: "text", height: "40%", text: "Travel", size: "7vw", valign: "bottom" },
+      { type: "text", y: "40%", height: "20%", x: "11%", text: "is my", font: "default", size: "3vw", valign: "middle" },
+      { type: "text", y: "60%", height: "40%", text: "Therapy!", size: "7vw" },
+    ]},
+  ],
+}
