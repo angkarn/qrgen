@@ -25,12 +25,16 @@
 
 mod error;
 mod generator;
+#[cfg(feature = "decode")]
+mod job;
 mod output;
 mod qr;
 mod row;
 
 pub use error::{Error, Result};
 pub use generator::{default_template, Canvas, Generator, Output};
+#[cfg(feature = "decode")]
+pub use job::{Batch, FileSource, FontSpec, Format, Job, OutputSpec, TemplateSource};
 pub use output::{encode_png, sanitize_file_name, UniqueNames};
 pub use qr::{draw_qr, encode, to_terminal, Ecc, QrElement, QrStyle};
 pub use row::Row;

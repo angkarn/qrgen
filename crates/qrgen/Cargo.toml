@@ -10,12 +10,14 @@ repository.workspace = true
 [features]
 default = ["decode", "default-font"]
 # Decode png, jpeg, webp, gif and bmp images (base images and `image` nodes)
-decode = ["textplate/decode"]
+decode = ["textplate/decode", "dep:csv", "dep:json5"]
 # Embed a default Latin font (Poppins, ~150 KB): `qrgen::DEFAULT_FONT`
 default-font = []
 
 [dependencies]
+csv = { version = "1.3", optional = true }
 image = { version = "0.25", default-features = false, features = ["png"] }
+json5 = { version = "1", optional = true }
 qrcodegen = "1.8"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }

@@ -583,7 +583,9 @@ checksum = "4339fc7a1021c9c1621d87f5e3505f2805c8c105420ba2f2a4df86814590c142"
 name = "qrgen"
 version = "0.3.0"
 dependencies = [
+ "csv",
  "image",
+ "json5",
  "qrcodegen",
  "rqrr",
  "serde",
@@ -599,14 +601,10 @@ dependencies = [
  "anyhow",
  "base64",
  "clap",
- "csv",
  "image",
- "json5",
  "qrgen",
  "rayon",
  "rqrr",
- "serde",
- "serde_json",
  "tempfile",
 ]
 

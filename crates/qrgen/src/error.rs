@@ -25,6 +25,10 @@ pub enum Error {
     #[error("invalid value: {0}")]
     Invalid(String),
 
+    /// A row cannot be rendered: missing column or image, unusable output name, ...
+    #[error("{0}")]
+    Data(String),
+
     #[error("cannot encode PNG: {0}")]
     Png(#[from] image::ImageError),
 }
