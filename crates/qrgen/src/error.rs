@@ -25,6 +25,14 @@ pub enum Error {
     #[error("invalid value: {0}")]
     Invalid(String),
 
+    /// The job is invalid, or a file it names cannot be read.
+    #[error("{0}")]
+    Job(String),
+
+    /// A row cannot be rendered: missing column or image, unusable output name, ...
+    #[error("{0}")]
+    Data(String),
+
     #[error("cannot encode PNG: {0}")]
     Png(#[from] image::ImageError),
 }

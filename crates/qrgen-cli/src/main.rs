@@ -1,4 +1,3 @@
-mod job;
 mod run;
 
 use std::{
@@ -10,11 +9,11 @@ use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use qrgen::{textplate::Color, Ecc};
 
-use crate::job::{FontSpec, Format, Job, TemplateSource};
+use qrgen::{FontSpec, Format, Job, TemplateSource};
 
 /// Generate QR code images with text, from one value or every row of a CSV file.
 #[derive(Parser)]
-#[command(version, about, max_term_width = 100)]
+#[command(name = "qrgen", version, about, max_term_width = 100)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -111,8 +110,8 @@ struct Common {
     /// QR quiet zone in modules
     #[arg(long, default_value_t = 1)]
     quiet_zone: u32,
-    #[arg(long, value_enum, default_value_t = Format::Png)]
-    format: Format,
+    #[arg(long, value_enum, default_value_t = OutputFormat::Png)]
+    format: OutputFormat,
     /// Fail when text does not fit its box (default: warn)
     #[arg(long)]
     strict: bool,
@@ -121,7 +120,7 @@ struct Common {
 impl Common {
     fn into_job(self) -> Job {
         let mut job = Job {
-            template: self.template.map(TemplateSource::Path),
+            template: self.template.map(|p| TemplateSource::Path(path_string(&p))),
             fonts: self.fonts,
             strict: self.strict,
             ..Job::default()
@@ -139,7 +138,10 @@ impl Common {
             light: self.light,
             quiet_zone: self.quiet_zone,
         };
-        job.output.format = self.format;
+        job.output.format = match self.format {
+            OutputFormat::Png => Format::Png,
+            OutputFormat::Base64 => Format::Base64,
+        };
         job
     }
 }
@@ -164,7 +166,7 @@ fn run_cli(cli: Cli) -> Result<bool> {
         } => {
             let mut job = common.into_job();
             job.data = Some(data);
-            job.output.file = Some(output);
+            job.output.file = Some(path_string(&output));
             run::run(job, Path::new(""))
         }
         Command::Batch {
@@ -178,10 +180,10 @@ fn run_cli(cli: Cli) -> Result<bool> {
             common,
         } => {
             let mut job = common.into_job();
-            job.csv = Some(csv);
+            job.csv = Some(path_string(&csv));
             job.data = Some(data);
             job.header = header;
-            job.output.dir = Some(out_dir);
+            job.output.dir = Some(path_string(&out_dir));
             job.output.name = Some(name);
             job.fail_fast = fail_fast;
             with_threads(jobs, || run::run(job, Path::new("")))
@@ -189,7 +191,7 @@ fn run_cli(cli: Cli) -> Result<bool> {
         Command::Run { job: path, jobs } => {
             let src = std::fs::read_to_string(&path)
                 .with_context(|| format!("cannot read {}", path.display()))?;
-            let job: Job = json5::from_str(&src)
+            let job = Job::from_json5(&src)
                 .with_context(|| format!("invalid job file {}", path.display()))?;
             let base = path.parent().unwrap_or(Path::new("")).to_path_buf();
             with_threads(jobs, || run::run(job, &base))
@@ -199,6 +201,18 @@ fn run_cli(cli: Cli) -> Result<bool> {
             Ok(true)
         }
     }
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum OutputFormat {
+    /// Write PNG files
+    Png,
+    /// Print base64-encoded PNGs to stdout
+    Base64,
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
 }
 
 fn with_threads(jobs: Option<usize>, f: impl FnOnce() -> Result<bool> + Send) -> Result<bool> {
