@@ -59,21 +59,25 @@ pub fn generate_image(
     opt: GenerateImageOptions,
     text_cache: &mut TextCache,
 ) -> Result<ResultGenerateImage, String> {
-    // Create a new image with additional space at the top
-    let mut new_image = if opt.base_image.is_some() {
-        open(opt.base_image.unwrap()).unwrap()
-    } else {
-        // Set widget color
-        let fill_color_rgba: [u8; 4] = u32::from_str_radix(opt.fill_color.as_str(), 16)
-            .unwrap()
-            .to_be_bytes();
+    // Fill color of a new image (None when drawing on a base image)
+    let fill_color_rgba: Option<[u8; 4]> = match opt.base_image {
+        Some(_) => None,
+        None => Some(
+            u32::from_str_radix(opt.fill_color.as_str(), 16)
+                .unwrap()
+                .to_be_bytes(),
+        ),
+    };
 
+    // Create a new image with additional space at the top
+    let mut new_image = match fill_color_rgba {
+        None => open(opt.base_image.unwrap()).unwrap(),
         // fill bg base image
-        DynamicImage::ImageRgba8(RgbaImage::from_pixel(
+        Some(fill) => DynamicImage::ImageRgba8(RgbaImage::from_pixel(
             opt.image_width,
             opt.image_height,
-            Rgba(fill_color_rgba),
-        ))
+            Rgba(fill),
+        )),
     };
 
     // Generate and draw QR
@@ -87,9 +91,29 @@ pub fn generate_image(
             _ => QrCodeEcc::Medium,
         };
 
-        // Generate a QR code and convert it to ImageBuffer
-        let qr_code_buffer = qrcode_generator::to_image_buffer(content.unwrap(), ecc, opt.qr_size as usize)
+        // Generate the QR module matrix (rows[y][x])
+        let modules = qrcode_generator::to_matrix(content.unwrap(), ecc)
             .expect("Failed to generate QR code");
+
+        // Same layout as qrcode_generator::to_image_buffer: 1-module quiet zone,
+        // square modules of `point_size` pixels, centered in `qr_size`
+        let qr_size = opt.qr_size as usize;
+        let point_size = qr_size / (modules.len() + 2);
+        assert!(point_size > 0, "Failed to generate QR code: QR size is too small");
+        let margin = (qr_size - point_size * modules.len()) / 2;
+        let module_at = |p: usize| -> Option<usize> {
+            (p >= margin && p < margin + point_size * modules.len())
+                .then(|| (p - margin) / point_size)
+        };
+        // Dark flags of one pixel row (identical for every pixel row of a module row)
+        let row_flags = |module_row: Option<usize>| -> Vec<bool> {
+            (0..qr_size)
+                .map(|x| match (module_row, module_at(x)) {
+                    (Some(r), Some(c)) => modules[r][c],
+                    _ => false,
+                })
+                .collect()
+        };
 
         // Copy the QR code image onto the new image
         let qr_color_0: [u8; 4] = u32::from_str_radix(opt.qr_color.0.as_str(), 16)
@@ -119,19 +143,60 @@ pub fn generate_image(
             }
         };
 
-        for y in 0..qr_code_buffer.height() {
-            for x in 0..qr_code_buffer.width() {
-                let is_dark = qr_code_buffer.get_pixel(x, y)[0] == 0;
-                let (px, py) = (opt.pos_qr_x + x, opt.pos_qr_y + y);
-                match &mut new_image {
-                    // Fast path: direct buffer access (skips DynamicImage conversion)
-                    DynamicImage::ImageRgba8(buf) => {
-                        let pixel = buf.get_pixel_mut(px, py);
-                        *pixel = Rgba(blend(*pixel, is_dark));
+        let (pos_x, pos_y) = (opt.pos_qr_x as usize, opt.pos_qr_y as usize);
+        assert!(
+            pos_x + qr_size <= new_image.width() as usize
+                && pos_y + qr_size <= new_image.height() as usize,
+            "QR is out of image bounds"
+        );
+
+        let mut cached_module_row: Option<Option<usize>> = None;
+        let mut flags: Vec<bool> = Vec::new();
+
+        match (&mut new_image, fill_color_rgba) {
+            // Fast path: on a new image every pixel under the QR is the fill color, so
+            // build each module row once and copy it into the buffer
+            (DynamicImage::ImageRgba8(buf), Some(fill)) => {
+                let light = blend(Rgba(fill), false);
+                let dark = blend(Rgba(fill), true);
+                let img_w = buf.width() as usize;
+                let raw: &mut [u8] = buf;
+                let mut row_bytes: Vec<u8> = Vec::with_capacity(qr_size * 4);
+                for y in 0..qr_size {
+                    let module_row = module_at(y);
+                    if cached_module_row != Some(module_row) {
+                        row_bytes.clear();
+                        for &is_dark in row_flags(module_row).iter() {
+                            row_bytes.extend_from_slice(if is_dark { &dark } else { &light });
+                        }
+                        cached_module_row = Some(module_row);
                     }
-                    image => {
-                        let color = blend(image.get_pixel(px, py), is_dark);
-                        image.put_pixel(px, py, Rgba(color));
+                    let start = ((pos_y + y) * img_w + pos_x) * 4;
+                    raw[start..start + qr_size * 4].copy_from_slice(&row_bytes);
+                }
+            }
+            // Base image: blend with each base pixel
+            (image, _) => {
+                for y in 0..qr_size {
+                    let module_row = module_at(y);
+                    if cached_module_row != Some(module_row) {
+                        flags = row_flags(module_row);
+                        cached_module_row = Some(module_row);
+                    }
+                    let py = (pos_y + y) as u32;
+                    for (x, &is_dark) in flags.iter().enumerate() {
+                        let px = (pos_x + x) as u32;
+                        match &mut *image {
+                            // Direct buffer access (skips DynamicImage conversion)
+                            DynamicImage::ImageRgba8(buf) => {
+                                let pixel = buf.get_pixel_mut(px, py);
+                                *pixel = Rgba(blend(*pixel, is_dark));
+                            }
+                            other => {
+                                let color = blend(other.get_pixel(px, py), is_dark);
+                                other.put_pixel(px, py, Rgba(color));
+                            }
+                        }
                     }
                 }
             }
