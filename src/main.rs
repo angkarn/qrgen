@@ -549,7 +549,7 @@ fn encode_png(image: &DynamicImage) -> Result<Vec<u8>, ImageError> {
         image.as_bytes(),
         image.width(),
         image.height(),
-        image.color(),
+        image.color().into(),
     )?;
     Ok(bytes)
 }
