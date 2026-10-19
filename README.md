@@ -133,7 +133,7 @@ A template is a list of [textplate nodes](https://github.com/angkarn/textplate#t
 `crates/qrgen-wasm` is a [wasm-bindgen](https://github.com/wasm-bindgen/wasm-bindgen) package
 that runs job files in the browser (`qrgen-web.tar.gz` on the release page, or
 `crates/qrgen-wasm/build.sh`). Paths in the job are looked up in the files you pass, and only the
-files the job uses are read.
+files the job uses are read. It uses WebAssembly SIMD (Chrome 91, Firefox 89, Safari 16.4 or newer).
 
 ```js
 import init, { Batch } from "./qrgen-web/qrgen.js";
