@@ -3,7 +3,10 @@ use clap::{CommandFactory, Parser, Subcommand};
 use rayon::prelude::*;
 use rust_text_draw::{
     fontdb::{self},
-    image::ImageFormat,
+    image::{
+        codecs::png::{CompressionType, FilterType, PngEncoder},
+        DynamicImage, ImageEncoder, ImageError,
+    },
     Widget,
 };
 use serde_json::{from_value, Value};
@@ -12,8 +15,7 @@ use qrgen::utils::generate::TextCache;
 use std::{
     cell::RefCell,
     collections::HashMap,
-    fs::{create_dir_all, read},
-    io::Cursor,
+    fs::{create_dir_all, read, write},
     path::Path,
 };
 
@@ -514,17 +516,15 @@ fn handler_result_generate_image(
             }
 
             if to_base64 {
-                let mut bytes: Vec<u8> = Vec::new();
-                r.image_buffer
-                    .write_to(&mut Cursor::new(&mut bytes), ImageFormat::Png)
-                    .expect("Couldn't write image to bytes.");
+                let bytes = encode_png(&r.image_buffer).expect("Couldn't write image to bytes.");
 
                 let b64 = general_purpose::STANDARD.encode(bytes);
 
                 println!("result_base64:{}:{}", path, &b64);
                 true
             } else {
-                let save_image = r.image_buffer.save(&path);
+                let save_image = encode_png(&r.image_buffer)
+                    .and_then(|bytes| write(&path, bytes).map_err(ImageError::IoError));
 
                 match save_image {
                     Ok(_) => {
@@ -539,4 +539,17 @@ fn handler_result_generate_image(
             }
         }
     }
+}
+
+// Encode PNG with a fixed Paeth filter instead of the default adaptive filter:
+// ~2x faster to encode for a few percent larger files (output pixels are identical)
+fn encode_png(image: &DynamicImage) -> Result<Vec<u8>, ImageError> {
+    let mut bytes: Vec<u8> = Vec::new();
+    PngEncoder::new_with_quality(&mut bytes, CompressionType::Fast, FilterType::Paeth).write_image(
+        image.as_bytes(),
+        image.width(),
+        image.height(),
+        image.color(),
+    )?;
+    Ok(bytes)
 }
