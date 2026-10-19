@@ -106,7 +106,7 @@ impl Batch {
             .map_err(|e| JsError::new(&e))
     }
 
-    /// Renders row `i` to `{ name, png: Uint8Array, warnings: string[] }`.
+    /// Renders row `i`.
     pub fn render(&self, i: usize) -> Result<Image, JsError> {
         self.check(i)?;
         let name = self.name(i)?;

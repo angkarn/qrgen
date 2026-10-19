@@ -40,7 +40,7 @@ pub struct Job {
 
 impl Job {
     pub fn from_json5(src: &str) -> Result<Self> {
-        json5::from_str(src).map_err(|e| Error::Invalid(format!("job: {e}")))
+        json5::from_str(src).map_err(|e| Error::Job(format!("job: {e}")))
     }
 
     /// `true` when the job makes one image (no CSV).
@@ -126,7 +126,7 @@ impl Batch {
         let read = |kind: &str, path: &str| {
             files
                 .read(path)
-                .map_err(|e| Error::Invalid(format!("cannot read {kind} {path}: {e}")))
+                .map_err(|e| Error::Job(format!("cannot read {kind} {path}: {e}")))
         };
 
         let template = match &job.template {
@@ -134,7 +134,7 @@ impl Batch {
             Some(TemplateSource::Path(path)) => {
                 let bytes = read("template", path)?;
                 let src = String::from_utf8(bytes)
-                    .map_err(|_| Error::Invalid(format!("template {path} is not UTF-8")))?;
+                    .map_err(|_| Error::Job(format!("template {path} is not UTF-8")))?;
                 Template::from_json5(&src)?
             }
             Some(TemplateSource::Inline(value)) => Template::from_value(value.clone())?,
@@ -280,19 +280,18 @@ fn read_csv(bytes: &[u8], header: bool, path: &str) -> Result<Records> {
     let headers = if header {
         let h = reader
             .headers()
-            .map_err(|e| Error::Invalid(format!("CSV {path}: {e}")))?;
+            .map_err(|e| Error::Job(format!("CSV {path}: {e}")))?;
         Some(h.iter().map(str::to_string).collect())
     } else {
         None
     };
     let mut records = Vec::new();
     for (i, record) in reader.records().enumerate() {
-        let record =
-            record.map_err(|e| Error::Invalid(format!("CSV {path} line {}: {e}", i + 1)))?;
+        let record = record.map_err(|e| Error::Job(format!("CSV {path} line {}: {e}", i + 1)))?;
         records.push(record.iter().map(str::to_string).collect());
     }
     if records.is_empty() {
-        return Err(Error::Invalid(format!("CSV {path} has no rows")));
+        return Err(Error::Job(format!("CSV {path} has no rows")));
     }
     Ok((headers, records))
 }
