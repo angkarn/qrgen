@@ -258,6 +258,20 @@ qrgen from "example/set_base_image/from/data.csv" -b="example/set_base_image/fro
 
 ## Build
 
-This project uses dependency from [rust-text-draw](https://github.com/angkarn/rust-text-draw). Please clone this repo before.
+This project uses dependency from [rust-text-draw](https://github.com/angkarn/rust-text-draw). Clone it next to this repo first:
+
+```sh
+git clone https://github.com/angkarn/rust-text-draw
+git clone https://github.com/angkarn/qrgen
+cd qrgen
+cargo build --release                               # native
+cargo build --release --target wasm32-wasip1        # WASI (qrgen.wasm)
+```
+
+Base images can be png, jpeg, webp, gif or bmp.
+
+## Release
+
+Releases are built by the [Release workflow](.github/workflows/release.yml): bump `version` in `Cargo.toml`, add a `## vX.Y.Z` section to [CHANGELOG.md](CHANGELOG.md), merge, then run the workflow with the same version.
 
 ---
