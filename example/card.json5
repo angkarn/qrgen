@@ -1,0 +1,28 @@
+// QR card for each contact in data.csv
+//   qrgen run example/card.json5
+{
+  csv: "data.csv",
+  data: "{{ROW}}|{{1}}",
+  canvas: { width: 1000, height: 1340 },
+  fonts: [
+    { name: "body", path: "../fonts/poppins-v21-latin-regular.ttf" },
+    { name: "display", path: "../fonts/Monofett-Regular.ttf" },
+    { name: "barcode", path: "../fonts/LibreBarcode39Text-Regular.ttf" },
+    { name: "icons", path: "../fonts/noto-emoji-v53-emoji-regular.ttf" },
+    { name: "emoji", path: "../fonts/NotoColorEmoji.ttf" },
+  ],
+  output: { dir: "output/card", name: "card_{{ROW}}" },
+  template: [
+    { type: "text", height: 150, align: "center", valign: "middle", spans: [
+      { text: "🌈 ", font: "emoji", size: "8vw" },
+      { text: "Hello ", font: "display", size: "11vw", color: "#c63658" },
+      { text: "*{{1}}*", font: "barcode", size: "12vw" },
+    ]},
+    { type: "qr", y: 150, height: 1000 },
+    { type: "box", y: "85%", height: "15%", fill: "#435058", color: "#ffffff", size: "4.5vw", padding: [0, "5vw"], children: [
+      { type: "text", text: "Information\nNo. {{ROW}}", valign: "middle" },
+      { type: "text", height: "50%", align: "right", valign: "bottom", spans: [{ text: "{{1}}  " }, { text: "👤", font: "icons" }] },
+      { type: "text", y: "50%", height: "50%", align: "right", valign: "top", spans: [{ text: "{{2}}  " }, { text: "✉️", font: "icons" }] },
+    ]},
+  ],
+}

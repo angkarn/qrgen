@@ -1,0 +1,28 @@
+// One image: multilingual text, rounded boxes and a QR code
+//   qrgen run example/hello.json5
+{
+  data: "https://github.com/angkarn/qrgen",
+  canvas: { width: 1000, height: 1000, background: "#e9e0d4" },
+  fonts: [
+    { name: "body", path: "../fonts/poppins-v21-latin-regular.ttf" },
+    { name: "thai", path: "../fonts/noto-sans-thai-v25-thai-regular.ttf" },
+    { name: "arabic", path: "../fonts/noto-sans-arabic-v28-arabic-regular.ttf" },
+    { name: "jp", path: "../fonts/noto-sans-jp-v53-japanese-regular.ttf" },
+    { name: "kr", path: "../fonts/noto-sans-kr-v36-korean-regular.ttf" },
+    { name: "sc", path: "../fonts/noto-sans-sc-v37-chinese-simplified-regular.ttf" },
+    { name: "hindi", path: "../fonts/noto-sans-devanagari-v26-devanagari-regular.ttf" },
+    { name: "emoji", path: "../fonts/NotoColorEmoji.ttf" },
+  ],
+  qr: { ecc: "q", dark: "#1f2937", light: "#ffffff" },
+  output: { file: "output/hello.png" },
+  template: [
+    { type: "text", y: "4%", height: "12%", text: "🙋 やあ 안녕 你好 สวัสดี नमस्ते مَرحَباً", size: "5vw", align: "center", valign: "middle" },
+    { type: "box", x: "20%", y: "18%", width: "60%", height: "60%", fill: "#ffffff", radius: "4vw", padding: "4vw", children: [
+      { type: "qr" },
+    ]},
+    { type: "box", x: "8%", y: "82%", width: "84%", height: "13%", fill: "#36454f", radius: "3vw", padding: [0, "4vw"], color: "#ffffff", children: [
+      { type: "text", text: "qrgen", size: "6vw", valign: "middle", color: "#f39c12" },
+      { type: "text", text: "QR codes with text, from templates and data", size: "2.6vw", align: "right", valign: "middle", fit: "shrink", x: "30%", width: "70%" },
+    ]},
+  ],
+}

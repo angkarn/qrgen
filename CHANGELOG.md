@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.3.0
+
+A rewrite on [textplate](https://github.com/angkarn/textplate). Commands, options, config files
+and templates have changed; v0.2.x files do not work with this version.
+
+### Commands
+- `gen <DATA>`: one image (`-o -` writes the PNG to stdout).
+- `batch <CSV>` (was `from`): one image per row, in parallel. Supports `--header` for `{{name}}`
+  placeholders, `--fail-fast` and `--jobs`.
+- `run <JOB>` (was `config`): job file with all options and an inline template. Relative paths
+  are resolved from the job file's folder.
+- `show <DATA>`: prints the QR code in the terminal with half-block characters.
+- Options use kebab-case (`--base-image`, `--font NAME=PATH`, `--quiet-zone`, ...) and `-h` is help.
+
+### Templates
+- textplate templates (`box`, `text`, `image`) plus a `qr` node, so QR codes can be placed, sized
+  and styled anywhere. Multiple QR codes per image are possible.
+- Placeholders are filled after parsing, so values like `O'Brien` or `{{x}}` cannot break a template.
+- New: rounded boxes, borders, transparent colors, `justify`, shrink-to-fit text, image nodes.
+
+### Reliability
+- Invalid templates, colors, fonts, missing columns or images are reported as errors with the
+  template path or row number. No panics.
+- A failed row no longer aborts the batch; the exit code is 1 if any row failed.
+- Output file names are made safe for Linux, macOS and Windows, and duplicates get `_2`, `_3`, ...
+- QR codes are drawn with whole-pixel modules and tested by decoding them back.
+
+### Project
+- Cargo workspace: `crates/qrgen` (library, no file I/O, builds for `wasm32-unknown-unknown`) and
+  `crates/qrgen-cli` (the `qrgen` binary).
+- Depends on textplate by git tag, so the repository builds on its own.
+- CI: fmt, clippy, tests, wasm builds and the examples.
+
 ## v0.2.0
 
 Performance release. Output images look the same as v0.1.0.
