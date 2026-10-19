@@ -628,7 +628,7 @@ checksum = "4339fc7a1021c9c1621d87f5e3505f2805c8c105420ba2f2a4df86814590c142"
 
 [[package]]
 name = "qrgen"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "csv",
  "image",
@@ -643,7 +643,7 @@ dependencies = [
 
 [[package]]
 name = "qrgen-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "base64",
@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "qrgen-wasm"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "js-sys",
  "qrgen",

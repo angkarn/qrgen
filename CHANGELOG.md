@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.4.1
 
 - Images used by one row (e.g. a photo per row) are decoded when that row renders instead of all
   up front: 200 rows of 2000x1500 photos went from 9.5 s and 2.4 GB peak memory to 3.7 s and
