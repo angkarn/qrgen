@@ -5,7 +5,8 @@ use serde_json::Value;
 use textplate::{image::RgbaImage, Assets, Fonts, Options, Template, TemplateString};
 
 use crate::{
-    default_template, Canvas, Error, Generator, Output, QrStyle, Result, Row, UniqueNames,
+    default_template, encode_image, Canvas, Error, Format, Generator, Output, QrStyle, Result, Row,
+    UniqueNames, DEFAULT_JPEG_QUALITY,
 };
 
 /// Reads the files a [`Job`] refers to (template, fonts, CSV, images) by the path written in it.
@@ -80,23 +81,18 @@ impl std::str::FromStr for FontSpec {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct OutputSpec {
-    /// Single image: output file (`-` for stdout in the CLI). Default `qr.png`.
+    /// Single image: output file (`-` for stdout in the CLI). Default `qr.png` / `qr.jpg`.
     pub file: Option<String>,
     /// CSV rows: output directory. Default `output`.
     pub dir: Option<String>,
     /// CSV rows: file name template, without extension. Default `{{ROW}}`.
     pub name: Option<String>,
+    /// `png` (default) or `jpeg`.
     pub format: Format,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Format {
-    /// PNG files
-    #[default]
-    Png,
-    /// Base64-encoded PNGs printed to stdout (CLI)
-    Base64,
+    /// JPEG quality, 1-100. Default 85.
+    pub quality: Option<u8>,
+    /// CLI: print base64-encoded images to stdout instead of writing files.
+    pub base64: bool,
 }
 
 /// A job loaded and ready to render, one image per row.
@@ -108,6 +104,8 @@ pub struct Batch {
     records: Vec<Vec<String>>,
     data: RowData,
     names: Vec<std::result::Result<String, String>>,
+    format: Format,
+    quality: u8,
     /// Images used by several rows, decoded once.
     assets: Assets,
     /// Images used by one row, decoded when that row is rendered.
@@ -143,6 +141,13 @@ impl Batch {
             Some(TemplateSource::Inline(value)) => Template::from_value(value.clone())?,
         };
 
+        let quality = job.output.quality.unwrap_or(DEFAULT_JPEG_QUALITY);
+        if !(1..=100).contains(&quality) {
+            return Err(Error::Job(format!(
+                "output.quality must be 1-100, not {quality}"
+            )));
+        }
+
         let mut fonts = Fonts::new();
         for font in &job.fonts {
             fonts.add(&font.name, read("font", &font.path)?)?;
@@ -175,6 +180,8 @@ impl Batch {
             records,
             data,
             names: Vec::new(),
+            format: job.output.format,
+            quality,
             assets: Assets::new(),
             encoded: HashMap::new(),
             asset_errors: HashMap::new(),
@@ -182,17 +189,22 @@ impl Batch {
 
         // File names, decided up front so they are unique and stable
         let name_template = TemplateString::parse(job.output.name.as_deref().unwrap_or("{{ROW}}"));
+        let extension = format!(".{}", job.output.format.extension());
         let mut unique = UniqueNames::new();
         batch.names = (0..batch.len())
             .map(|i| {
                 if job.is_single() {
-                    return Ok(job.output.file.clone().unwrap_or_else(|| "qr.png".into()));
+                    return Ok(job
+                        .output
+                        .file
+                        .clone()
+                        .unwrap_or_else(|| format!("qr{extension}")));
                 }
                 let row = batch.row(i)?;
                 let name = name_template
                     .render(&row)
                     .map_err(|n| format!("missing variable {n:?} in output name"))?;
-                Ok(unique.next(&name, ".png"))
+                Ok(unique.next(&name, &extension))
             })
             .collect();
 
@@ -289,6 +301,16 @@ impl Batch {
             .render(&row, row_assets.as_ref().unwrap_or(&self.assets))
     }
 
+    /// Encodes a rendered row in the job's format (`output.format`, `output.quality`).
+    pub fn encode(&self, output: &Output) -> Result<Vec<u8>> {
+        encode_image(&output.image, self.format, self.quality)
+    }
+
+    /// Image format of the job's output files.
+    pub fn format(&self) -> Format {
+        self.format
+    }
+
     pub fn generator(&self) -> &Generator {
         &self.generator
     }
@@ -354,8 +376,40 @@ mod tests {
         assert_eq!(batch.name(1).unwrap(), "Ann_2.png");
         assert_eq!(batch.row(1).unwrap().data.as_deref(), Some("id:2"));
         assert!(batch.render(0).is_ok());
+        assert_eq!(
+            batch.encode(&batch.render(0).unwrap()).unwrap()[..4],
+            *b"\x89PNG"
+        );
         let err = batch.render(2).err().unwrap().to_string();
         assert!(err.contains("missing variable \"id\""), "{err}");
+    }
+
+    #[test]
+    fn jpeg_output() {
+        let files = Files(HashMap::from([("rows.csv", b"a\nb\n".to_vec())]));
+        let job = Job::from_json5(
+            r#"{ csv: "rows.csv", output: { format: "jpeg", quality: 90 }, canvas: { width: 200 } }"#,
+        )
+        .unwrap();
+        let batch = Batch::new(&job, &files).unwrap();
+        assert_eq!(batch.name(0).unwrap(), "1.jpg");
+        let jpeg = batch.encode(&batch.render(0).unwrap()).unwrap();
+        let gray = textplate::image::load_from_memory(&jpeg)
+            .unwrap()
+            .into_luma8();
+        let mut prepared = rqrr::PreparedImage::prepare(gray);
+        let grids = prepared.detect_grids();
+        assert_eq!(grids[0].decode().unwrap().1, "a");
+
+        let single = Job::from_json5(r#"{ data: "x", output: { format: "jpg" } }"#).unwrap();
+        assert_eq!(
+            Batch::new(&single, &files).unwrap().name(0).unwrap(),
+            "qr.jpg"
+        );
+        let bad = Job::from_json5(r#"{ data: "x", output: { format: "jpeg", quality: 0 } }"#);
+        let err = Batch::new(&bad.unwrap(), &files).err().unwrap().to_string();
+        assert!(err.contains("quality must be 1-100"), "{err}");
+        assert!(Job::from_json5(r#"{ output: { format: "base64" } }"#).is_err());
     }
 
     #[test]

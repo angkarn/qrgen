@@ -25,9 +25,9 @@ enum Command {
     Gen {
         /// QR code content
         data: String,
-        /// Output file (`-` for stdout)
-        #[arg(short, long, default_value = "qr.png")]
-        output: PathBuf,
+        /// Output file (`-` for stdout) [default: qr.png, or qr.jpg with --format jpeg]
+        #[arg(short, long)]
+        output: Option<PathBuf>,
         #[command(flatten)]
         common: Common,
     },
@@ -48,7 +48,7 @@ enum Command {
         /// Output directory
         #[arg(short, long, default_value = "output")]
         out_dir: PathBuf,
-        /// File name template (".png" is added)
+        /// File name template (".png" or ".jpg" is added)
         #[arg(short, long, default_value = "{{ROW}}")]
         name: String,
         /// Stop at the first failed row
@@ -110,8 +110,16 @@ struct Common {
     /// QR quiet zone in modules
     #[arg(long, default_value_t = 1)]
     quiet_zone: u32,
+    /// Image format
     #[arg(long, value_enum, default_value_t = OutputFormat::Png)]
     format: OutputFormat,
+    /// JPEG quality, 1-100
+    #[arg(long, default_value_t = qrgen::DEFAULT_JPEG_QUALITY,
+          value_parser = clap::value_parser!(u8).range(1..=100))]
+    quality: u8,
+    /// Print base64-encoded images to stdout instead of writing files
+    #[arg(long)]
+    base64: bool,
     /// Fail when text does not fit its box (default: warn)
     #[arg(long)]
     strict: bool,
@@ -140,8 +148,10 @@ impl Common {
         };
         job.output.format = match self.format {
             OutputFormat::Png => Format::Png,
-            OutputFormat::Base64 => Format::Base64,
+            OutputFormat::Jpeg => Format::Jpeg,
         };
+        job.output.quality = Some(self.quality);
+        job.output.base64 = self.base64;
         job
     }
 }
@@ -166,7 +176,7 @@ fn run_cli(cli: Cli) -> Result<bool> {
         } => {
             let mut job = common.into_job();
             job.data = Some(data);
-            job.output.file = Some(path_string(&output));
+            job.output.file = output.map(|p| path_string(&p));
             run::run(job, Path::new(""))
         }
         Command::Batch {
@@ -205,10 +215,9 @@ fn run_cli(cli: Cli) -> Result<bool> {
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum OutputFormat {
-    /// Write PNG files
     Png,
-    /// Print base64-encoded PNGs to stdout
-    Base64,
+    /// Smaller files for photos; transparent pixels are drawn on white
+    Jpeg,
 }
 
 fn path_string(path: &Path) -> String {

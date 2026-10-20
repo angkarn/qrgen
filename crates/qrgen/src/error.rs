@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("cannot encode PNG: {0}")]
     Png(#[from] image::ImageError),
+
+    #[error("cannot encode JPEG: {0}")]
+    Jpeg(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

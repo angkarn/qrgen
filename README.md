@@ -81,7 +81,9 @@ row failed.
 | `--ecc <l\|m\|q\|h>` | `m` | QR error correction |
 | `--dark`, `--light <COLOR>` | `#000000`, `#ffffff` | QR colors (`#rrggbbaa` for transparency) |
 | `--quiet-zone <N>` | `1` | border around the QR, in modules |
-| `--format <png\|base64>` | `png` | `base64` prints instead of writing files |
+| `--format <png\|jpeg>` | `png` | `jpeg`: much smaller files for photos (transparency becomes white) |
+| `--quality <1-100>` | `85` | JPEG quality |
+| `--base64` | | print base64-encoded images instead of writing files |
 | `--strict` | | fail when text does not fit its box (default: warn) |
 
 The built-in Poppins font is always available as `default`.
@@ -99,7 +101,8 @@ from the job file's folder.
   canvas: { width: 1000, height: 1340, background: "#ffffff" }, // or base_image: "photos/{{2}}"
   fonts: [{ name: "body", path: "fonts/Poppins-Regular.ttf" }],
   qr: { ecc: "m", dark: "#000000", light: "#ffffff", quiet_zone: 1 },
-  output: { dir: "output", name: "card_{{ROW}}", format: "png" }, // single image: { file: "qr.png" }
+  output: { dir: "output", name: "card_{{ROW}}", format: "png" }, // or format: "jpeg", quality: 85
+                                 // single image: { file: "qr.png" }; base64: true prints instead
   strict: false,
   fail_fast: false,
   template: [ /* nodes, or a path to a .json5 file */ ],
@@ -142,7 +145,7 @@ await init();
 const files = new Map([["data.csv", csvBytes], ["fonts/body.ttf", fontBytes]]); // Uint8Arrays
 const batch = new Batch(jobJson5, files);   // throws on an invalid job
 for (let i = 0; i < batch.length; i++) {
-  const { name, png, warnings } = batch.render(i); // throws for a failed row
+  const { name, data, mimeType, warnings } = batch.render(i); // throws for a failed row
 }
 ```
 

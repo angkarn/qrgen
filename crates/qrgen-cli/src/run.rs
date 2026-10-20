@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
-use qrgen::{encode_png, Batch, FileSource, Format, Job};
+use qrgen::{Batch, FileSource, Job};
 use rayon::prelude::*;
 
 /// Reads job files from disk, relative to the job file's folder (or the working directory).
@@ -42,7 +42,8 @@ pub fn run(job: Job, base: &Path) -> Result<bool> {
     let single = job.is_single();
 
     let out_dir = files.resolve(job.output.dir.as_deref().unwrap_or("output"));
-    if !single && job.output.format == Format::Png {
+    let base64 = job.output.base64;
+    if !single && !base64 {
         fs::create_dir_all(&out_dir)
             .with_context(|| format!("cannot create {}", out_dir.display()))?;
     }
@@ -74,8 +75,8 @@ pub fn run(job: Job, base: &Path) -> Result<bool> {
                 for overflow in &output.report.overflows {
                     eprintln!("{}warning: {overflow}", label(i));
                 }
-                let png = encode_png(&output.image).map_err(|e| e.to_string())?;
-                write_output(&target, &png, job.output.format, single)
+                let bytes = batch.encode(&output).map_err(|e| e.to_string())?;
+                write_output(&target, &bytes, base64, single)
             })();
             match result {
                 Ok(()) => true,
@@ -106,33 +107,33 @@ enum Target {
     Stdout,
 }
 
-fn write_output(target: &Target, png: &[u8], format: Format, single: bool) -> Result<(), String> {
-    match (target, format) {
-        (Target::Stdout, Format::Png) => std::io::stdout()
+fn write_output(target: &Target, bytes: &[u8], base64: bool, single: bool) -> Result<(), String> {
+    match (target, base64) {
+        (Target::Stdout, false) => std::io::stdout()
             .lock()
-            .write_all(png)
+            .write_all(bytes)
             .map_err(|e| e.to_string()),
-        (_, Format::Base64) if single => {
-            println!("{}", STANDARD.encode(png));
+        (_, true) if single => {
+            println!("{}", STANDARD.encode(bytes));
             Ok(())
         }
-        (Target::File(path), Format::Base64) => {
+        (Target::File(path), true) => {
             let name = path
                 .file_name()
                 .map(|n| n.to_string_lossy())
                 .unwrap_or_default();
-            println!("{name}\t{}", STANDARD.encode(png));
+            println!("{name}\t{}", STANDARD.encode(bytes));
             Ok(())
         }
-        (Target::File(path), Format::Png) => {
+        (Target::File(path), false) => {
             if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
                 fs::create_dir_all(dir)
                     .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
             }
-            fs::write(path, png).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+            fs::write(path, bytes).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
             println!("{}", path.display());
             Ok(())
         }
-        (Target::Stdout, Format::Base64) => unreachable!("handled by the single-image arm"),
+        (Target::Stdout, true) => unreachable!("handled by the single-image arm"),
     }
 }
