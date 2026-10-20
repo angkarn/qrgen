@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.5.0
 
 - JPEG output: `output: { format: "jpeg", quality: 85 }` in jobs, `--format jpeg --quality N` in the
   CLI. For photos the files are about 10x smaller than PNG (2000x1500: 2.1 MB -> 0.2 MB).
