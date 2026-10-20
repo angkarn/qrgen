@@ -15,7 +15,7 @@ fn qrgen(dir: &Path, args: &[&str]) -> (bool, String, String) {
     )
 }
 
-fn decode_png(bytes: &[u8]) -> Vec<String> {
+fn decode_image(bytes: &[u8]) -> Vec<String> {
     let gray = image::load_from_memory(bytes).unwrap().into_luma8();
     let mut prepared = rqrr::PreparedImage::prepare(gray);
     prepared
@@ -42,19 +42,41 @@ fn gen_writes_a_scannable_png() {
     assert!(ok, "{stderr}");
     assert_eq!(stdout.trim(), "out/qr.png", "prints the path it wrote");
     let png = fs::read(dir.path().join("out/qr.png")).unwrap();
-    assert_eq!(decode_png(&png), ["https://example.com/?q=ทดสอบ"]);
+    assert_eq!(decode_image(&png), ["https://example.com/?q=ทดสอบ"]);
+}
+
+#[test]
+fn gen_jpeg() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ok, stdout, stderr) = qrgen(
+        dir.path(),
+        &[
+            "gen",
+            "hello",
+            "--width",
+            "300",
+            "--format",
+            "jpeg",
+            "--quality",
+            "90",
+        ],
+    );
+    assert!(ok, "{stderr}");
+    assert_eq!(stdout.trim(), "qr.jpg");
+    let jpeg = fs::read(dir.path().join("qr.jpg")).unwrap();
+    assert_eq!(&jpeg[..3], [0xff, 0xd8, 0xff]);
+    assert_eq!(decode_image(&jpeg), ["hello"]);
+    let (ok, _, stderr) = qrgen(dir.path(), &["gen", "x", "--quality", "0"]);
+    assert!(!ok && stderr.contains("0"), "{stderr}");
 }
 
 #[test]
 fn gen_base64_to_stdout() {
     let dir = tempfile::tempdir().unwrap();
-    let (ok, stdout, _) = qrgen(
-        dir.path(),
-        &["gen", "hello", "--width", "200", "--format", "base64"],
-    );
+    let (ok, stdout, _) = qrgen(dir.path(), &["gen", "hello", "--width", "200", "--base64"]);
     assert!(ok);
     assert_eq!(
-        decode_png(&STANDARD.decode(stdout.trim()).unwrap()),
+        decode_image(&STANDARD.decode(stdout.trim()).unwrap()),
         ["hello"]
     );
 }
@@ -108,7 +130,7 @@ fn batch_with_headers_names_and_bad_rows() {
     created.sort();
     assert_eq!(created, ["Ann.png", "Ann_2.png", "O'Brien.png"]);
     let png = fs::read(dir.path().join("output/O'Brien.png")).unwrap();
-    assert_eq!(decode_png(&png), ["id:1"]);
+    assert_eq!(decode_image(&png), ["id:1"]);
 }
 
 #[test]
@@ -143,7 +165,7 @@ fn run_resolves_paths_from_the_job_file() {
         (240, 160),
         "canvas takes the base image size"
     );
-    assert_eq!(decode_png(&png), ["a"]);
+    assert_eq!(decode_image(&png), ["a"]);
 }
 
 #[test]

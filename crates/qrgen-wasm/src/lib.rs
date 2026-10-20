@@ -6,7 +6,7 @@
 //! const files = new Map([["data.csv", csvBytes], ["fonts/body.ttf", fontBytes]]);
 //! const batch = new Batch(jobJson5, files);
 //! for (let i = 0; i < batch.length; i++) {
-//!   const image = batch.render(i); // { name, png, warnings }
+//!   const image = batch.render(i); // { name, data, mimeType, warnings }
 //! }
 //! ```
 //!
@@ -97,7 +97,7 @@ impl Batch {
         self.files.clone()
     }
 
-    /// File name of row `i` (e.g. `card_1.png`).
+    /// File name of row `i` (e.g. `card_1.png` or `card_1.jpg`).
     pub fn name(&self, i: usize) -> Result<String, JsError> {
         self.check(i)?;
         self.inner
@@ -111,7 +111,7 @@ impl Batch {
         self.check(i)?;
         let name = self.name(i)?;
         let output = self.inner.render(i).map_err(to_js)?;
-        let png = qrgen::encode_png(&output.image).map_err(to_js)?;
+        let data = self.inner.encode(&output).map_err(to_js)?;
         let warnings = output
             .report
             .overflows
@@ -120,7 +120,8 @@ impl Batch {
             .collect();
         Ok(Image {
             name,
-            png,
+            data,
+            format: self.inner.format(),
             warnings,
         })
     }
@@ -143,7 +144,8 @@ impl Batch {
 #[wasm_bindgen]
 pub struct Image {
     name: String,
-    png: Vec<u8>,
+    data: Vec<u8>,
+    format: qrgen::Format,
     warnings: Vec<String>,
 }
 
@@ -154,10 +156,16 @@ impl Image {
         self.name.clone()
     }
 
-    /// PNG file bytes.
+    /// Image file bytes (PNG or JPEG, from `output.format`).
     #[wasm_bindgen(getter)]
-    pub fn png(&self) -> Uint8Array {
-        Uint8Array::from(self.png.as_slice())
+    pub fn data(&self) -> Uint8Array {
+        Uint8Array::from(self.data.as_slice())
+    }
+
+    /// `image/png` or `image/jpeg`.
+    #[wasm_bindgen(getter, js_name = mimeType)]
+    pub fn mime_type(&self) -> String {
+        self.format.mime_type().into()
     }
 
     /// Text that did not fit its box (an error instead with `strict: true`).

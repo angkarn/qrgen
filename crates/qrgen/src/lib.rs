@@ -34,8 +34,11 @@ mod row;
 pub use error::{Error, Result};
 pub use generator::{default_template, Canvas, Generator, Output};
 #[cfg(feature = "decode")]
-pub use job::{Batch, FileSource, FontSpec, Format, Job, OutputSpec, TemplateSource};
-pub use output::{encode_png, sanitize_file_name, UniqueNames};
+pub use job::{Batch, FileSource, FontSpec, Job, OutputSpec, TemplateSource};
+pub use output::{
+    encode_image, encode_jpeg, encode_png, sanitize_file_name, Format, UniqueNames,
+    DEFAULT_JPEG_QUALITY,
+};
 pub use qr::{draw_qr, encode, to_terminal, Ecc, QrElement, QrStyle};
 pub use row::Row;
 pub use textplate;

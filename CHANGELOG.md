@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- JPEG output: `output: { format: "jpeg", quality: 85 }` in jobs, `--format jpeg --quality N` in the
+  CLI. For photos the files are about 10x smaller than PNG (2000x1500: 2.1 MB -> 0.2 MB).
+  Transparent pixels are drawn on white.
+- Changed: base64 printing is its own option, `output: { base64: true }` / `--base64`, instead of
+  `format: "base64"`, so it works with JPEG too.
+- Browser package: `image.data` and `image.mimeType` replace `image.png`.
+- Library: `Format` (`Png`, `Jpeg`), `encode_image`, `encode_jpeg` and `Batch::encode`.
+
 ## v0.4.1
 
 - Images used by one row (e.g. a photo per row) are decoded when that row renders instead of all
