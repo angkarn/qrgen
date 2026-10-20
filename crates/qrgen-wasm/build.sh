@@ -15,3 +15,4 @@ if command -v wasm-opt >/dev/null; then
     "$out/qrgen_bg.wasm" -o "$out/qrgen_bg.wasm"
 fi
 ls -l "$out"
+node crates/qrgen-wasm/smoke.mjs "$out"
