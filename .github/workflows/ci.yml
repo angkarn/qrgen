@@ -17,10 +17,36 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
-      - name: Build the library and the wasm-bindgen package for the browser
-        run: cargo build --locked --release -p qrgen -p qrgen-wasm --target wasm32-unknown-unknown
+      - name: Find the wasm-bindgen version
+        id: wasm-bindgen
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache wasm-bindgen-cli
+        id: wasm-bindgen-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-${{ runner.os }}-${{ steps.wasm-bindgen.outputs.version }}
+      - name: Install wasm-bindgen-cli
+        if: steps.wasm-bindgen-cache.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version "${{ steps.wasm-bindgen.outputs.version }}" --locked
+      - name: Build and smoke-test the browser package
+        run: crates/qrgen-wasm/build.sh
       - name: Build the CLI for WASI
         run: cargo build --locked --release -p qrgen-cli --target wasm32-wasip1
       - name: Run the examples
         run: |
           for job in example/*.json5; do cargo run --locked --release -p qrgen-cli -- run "$job"; done
+
+  msrv:
+    name: Minimum Rust version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install the rust-version from Cargo.toml
+        run: |
+          msrv=$(grep -m1 '^rust-version' Cargo.toml | cut -d'"' -f2)  # [workspace.package]
+          rustup toolchain install "$msrv" --profile minimal
+          echo "MSRV=$msrv" >> "$GITHUB_ENV"
+      - run: cargo +"$MSRV" check --workspace --all-targets --locked
