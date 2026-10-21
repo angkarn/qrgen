@@ -14,5 +14,7 @@ if command -v wasm-opt >/dev/null; then
     --enable-multivalue --enable-sign-ext --enable-mutable-globals \
     "$out/qrgen_bg.wasm" -o "$out/qrgen_bg.wasm"
 fi
+# The package embeds the default font (Poppins, SIL OFL 1.1): ship its license with it
+cp crates/qrgen/assets/OFL.txt "$out/OFL.txt"
 ls -l "$out"
 node crates/qrgen-wasm/smoke.mjs "$out"

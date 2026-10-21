@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Font licenses: `fonts/OFL.txt` and `crates/qrgen/assets/OFL.txt` give the copyright notice and
+  SIL Open Font License 1.1 of every bundled font. The built-in Poppins font's license ships with
+  everything that contains it: `qrgen licenses` prints it, `qrgen::DEFAULT_FONT_LICENSE` holds it,
+  and the browser package and each release include `OFL.txt`.
+
 ## v0.5.0
 
 - JPEG output: `output: { format: "jpeg", quality: 85 }` in jobs, `--format jpeg --quality N` in the

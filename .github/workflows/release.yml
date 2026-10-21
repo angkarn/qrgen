@@ -117,6 +117,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
+          cp crates/qrgen/assets/OFL.txt dist/OFL.txt  # license of the font built into qrgen
           ls -l dist
           gh release create "$VERSION" dist/* \
             --repo "$GITHUB_REPOSITORY" \

@@ -195,3 +195,12 @@ fn show_prints_blocks() {
     assert!(ok);
     assert!(stdout.lines().count() > 10 && stdout.contains('█'));
 }
+
+#[test]
+fn licenses_prints_the_font_license() {
+    let dir = tempfile::tempdir().unwrap();
+    let (ok, stdout, _) = qrgen(dir.path(), &["licenses"]);
+    assert!(ok);
+    assert!(stdout.contains("Poppins Project Authors"), "{stdout}");
+    assert!(stdout.contains("SIL OPEN FONT LICENSE Version 1.1"));
+}

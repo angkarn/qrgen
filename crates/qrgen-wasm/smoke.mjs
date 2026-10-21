@@ -1,5 +1,5 @@
 // Smoke test for the browser package: node crates/qrgen-wasm/smoke.mjs <package dir>
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -19,6 +19,7 @@ for (const [format, name, mimeType, magic] of [
   check(image.mimeType === mimeType, `${format}: mimeType ${image.mimeType}`);
   check(image.data.length > 100 && magic.every((b, i) => image.data[i] === b), `${format}: bad data`);
 }
+check(existsSync(`${dir}/OFL.txt`), "OFL.txt (license of the built-in font) is missing");
 const rows = new Batch('{ csv: "a.csv", data: "{{1}}" }', new Map([["a.csv", new TextEncoder().encode("x\ny\n")]]));
 check(rows.length === 2 && rows.name(1) === "2.png", "csv rows");
 console.log(`qrgen ${version()}: ok`);
