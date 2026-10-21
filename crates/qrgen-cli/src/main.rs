@@ -76,6 +76,8 @@ enum Command {
         #[arg(long)]
         invert: bool,
     },
+    /// Print the license of the built-in font
+    Licenses,
 }
 
 #[derive(Args)]
@@ -208,6 +210,10 @@ fn run_cli(cli: Cli) -> Result<bool> {
         }
         Command::Show { data, ecc, invert } => {
             print!("{}", qrgen::to_terminal(&data, ecc, 1, invert)?);
+            Ok(true)
+        }
+        Command::Licenses => {
+            print!("{}", qrgen::DEFAULT_FONT_LICENSE);
             Ok(true)
         }
     }

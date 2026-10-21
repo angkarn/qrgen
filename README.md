@@ -86,7 +86,7 @@ row failed.
 | `--base64` | | print base64-encoded images instead of writing files |
 | `--strict` | | fail when text does not fit its box (default: warn) |
 
-The built-in Poppins font is always available as `default`.
+The built-in Poppins font is always available as `default` (`qrgen licenses` prints its license).
 
 ### `qrgen run <JOB>`
 
@@ -175,6 +175,15 @@ std::fs::write("qr.png", qrgen::encode_png(&output.image)?)?;
 ```
 
 `Generator` is `Send + Sync`; render rows in parallel from one instance.
+
+## Fonts
+
+The fonts in [`fonts/`](fonts) and the built-in Poppins ([`crates/qrgen/assets/`](crates/qrgen/assets))
+are licensed under the SIL Open Font License 1.1: see [`fonts/OFL.txt`](fonts/OFL.txt) and
+[`crates/qrgen/assets/OFL.txt`](crates/qrgen/assets/OFL.txt). Anything that ships qrgen with the
+`default-font` feature contains Poppins, so its license goes with it: `qrgen licenses` prints it,
+`qrgen::DEFAULT_FONT_LICENSE` holds it for library users, and the browser package and each release
+include `OFL.txt`. The font licenses do not apply to the images you generate.
 
 ## Development
 

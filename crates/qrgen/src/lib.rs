@@ -44,5 +44,12 @@ pub use row::Row;
 pub use textplate;
 
 /// Poppins Regular (Latin), embedded with the `default-font` feature.
+///
+/// It is licensed under the SIL Open Font License 1.1: programs that ship it must include
+/// [`DEFAULT_FONT_LICENSE`] (for example in their notices or a `licenses` command).
 #[cfg(feature = "default-font")]
 pub static DEFAULT_FONT: &[u8] = include_bytes!("../assets/Poppins-Regular.ttf");
+
+/// Copyright notice and license (SIL OFL 1.1) of [`DEFAULT_FONT`].
+#[cfg(feature = "default-font")]
+pub static DEFAULT_FONT_LICENSE: &str = include_str!("../assets/OFL.txt");
