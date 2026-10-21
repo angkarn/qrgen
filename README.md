@@ -185,6 +185,8 @@ are licensed under the SIL Open Font License 1.1: see [`fonts/OFL.txt`](fonts/OF
 `qrgen::DEFAULT_FONT_LICENSE` holds it for library users, and the browser package and each release
 include `OFL.txt`. The font licenses do not apply to the images you generate.
 
+The example photos are from Unsplash; see [`example/CREDITS.md`](example/CREDITS.md).
+
 ## Development
 
 ```sh
